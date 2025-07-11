@@ -16,6 +16,8 @@ PATH
   remote: .
   specs:
     schwab_mcp (0.1.0)
+      mcp
+      schwab_rb
 
 GEM
   remote: https://rubygems.org/
