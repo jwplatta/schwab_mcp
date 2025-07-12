@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-RSpec.describe SchwabMcp do
+RSpec.describe SchwabMCP do
   it "has a version number" do
-    expect(SchwabMcp::VERSION).not_to be nil
+    expect(SchwabMCP::VERSION).not_to be nil
   end
 
   it "does something useful" do
