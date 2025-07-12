@@ -7,6 +7,7 @@ require "schwab_rb"
 require_relative "schwab_mcp/version"
 require_relative "schwab_mcp/tools/quote_tool"
 require_relative "schwab_mcp/tools/quotes_tool"
+require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -17,7 +18,6 @@ module SchwabMCP
     include Loggable
 
     def initialize
-      # Configure schwab_rb to use our logger instance
       configure_schwab_rb_logging
 
       @server = MCP::Server.new(
@@ -25,7 +25,11 @@ module SchwabMCP
         version: SchwabMCP::VERSION,
         tools: [
           Tools::QuoteTool,
-          Tools::QuotesTool
+          Tools::QuotesTool,
+          Tools::HelpTool
+        ],
+        prompts: [
+          Prompts::FormatMarkdownTable
         ]
       )
     end
@@ -33,7 +37,7 @@ module SchwabMCP
     def start
       configure_mcp
       log_info("🚀 Starting Schwab MCP Server #{SchwabMCP::VERSION}")
-      log_info("📊 Available tools: QuoteTool, QuotesTool")
+      log_info("📊 Available tools: QuoteTool, QuotesTool, HelpTool")
       log_info("📝 Logs will be written to: #{log_file_path}")
       transport = MCP::Transports::StdioTransport.new(@server)
       transport.open
