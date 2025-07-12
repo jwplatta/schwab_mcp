@@ -7,7 +7,8 @@ module SchwabMCP
   module Tools
     class QuotesTool < MCP::Tool
       extend Loggable
-      description "Get real-time quotes for multiple instrument symbols using Schwab API"
+
+      description "Get real-time quotes for multiple instrument symbols using Schwab API formatted as JSON"
 
       input_schema(
         properties: {
@@ -43,7 +44,7 @@ module SchwabMCP
         idempotent_hint: true
       )
 
-      def self.call(symbols:, fields: nil, indicative: nil, server_context:)
+      def self.call(symbols:, fields: ["quote"], indicative: false, server_context:)
         symbols = [symbols] if symbols.is_a?(String)
 
         log_info("Getting quotes for #{symbols.length} symbols: #{symbols.join(', ')}")
@@ -64,23 +65,17 @@ module SchwabMCP
             }])
           end
 
-          unless indicative.nil?
-            unless [true, false].include?(indicative)
-              log_error("Invalid indicative parameter: #{indicative}")
-              return MCP::Tool::Response.new([{
-                type: "text",
-                text: "**Error**: The 'indicative' parameter must be either true or false."
-              }])
-            end
-          end
-
           log_debug("Making API request for symbols: #{symbols.join(', ')}")
           log_debug("Fields: #{fields || 'all'}")
           log_debug("Indicative: #{indicative || 'not specified'}")
 
           normalized_symbols = symbols.map(&:upcase)
 
-          response = client.get_quotes(normalized_symbols, fields: fields, indicative: indicative)
+          response = client.get_quotes(
+            normalized_symbols,
+            fields: fields,
+            indicative: indicative
+          )
 
           if response&.body
             log_info("Successfully retrieved quotes for #{symbols.length} symbols")
