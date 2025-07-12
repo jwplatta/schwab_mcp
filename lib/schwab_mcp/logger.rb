@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "logger"
+require "tmpdir"
 
 module SchwabMCP
   class Logger
@@ -39,7 +40,10 @@ module SchwabMCP
           max_files = (ENV['LOG_MAX_FILES'] || 5).to_i
           logger = ::Logger.new(ENV['LOGFILE'], max_files, max_size)
         else
-          logger = ::Logger.new($stderr)
+          # When running as MCP server, don't log to stderr as it interferes with the protocol
+          # Use a default log file instead
+          default_log_file = File.join(Dir.tmpdir, 'schwab_mcp.log')
+          logger = ::Logger.new(default_log_file)
         end
 
         logger.level = debug_enabled? ? ::Logger::DEBUG : ::Logger::INFO
