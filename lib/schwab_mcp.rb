@@ -2,8 +2,11 @@
 
 require "mcp"
 require "mcp/transports/stdio"
+require "tmpdir"
+require "schwab_rb"
 require_relative "schwab_mcp/version"
 require_relative "schwab_mcp/tools/quote_tool"
+require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -14,11 +17,15 @@ module SchwabMCP
     include Loggable
 
     def initialize
+      # Configure schwab_rb to use our logger instance
+      configure_schwab_rb_logging
+
       @server = MCP::Server.new(
         name: "schwab_mcp_server",
         version: SchwabMCP::VERSION,
         tools: [
-          Tools::QuoteTool
+          Tools::QuoteTool,
+          Tools::QuotesTool
         ]
       )
     end
@@ -26,12 +33,31 @@ module SchwabMCP
     def start
       configure_mcp
       log_info("🚀 Starting Schwab MCP Server #{SchwabMCP::VERSION}")
-      log_info("📊 Available tools: QuoteTool")
+      log_info("📊 Available tools: QuoteTool, QuotesTool")
+      log_info("📝 Logs will be written to: #{log_file_path}")
       transport = MCP::Transports::StdioTransport.new(@server)
       transport.open
     end
 
     private
+
+    def configure_schwab_rb_logging
+      # Pass our logger instance to schwab_rb
+      SchwabRb.configure do |config|
+        config.logger = SchwabMCP::Logger.instance
+        config.log_level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
+      end
+
+      log_info("Configured schwab_rb to use shared logger")
+    end
+
+    def log_file_path
+      if ENV['LOGFILE'] && !ENV['LOGFILE'].empty?
+        ENV['LOGFILE']
+      else
+        File.join(Dir.tmpdir, 'schwab_mcp.log')
+      end
+    end
 
     def configure_mcp
       MCP.configure do |config|
