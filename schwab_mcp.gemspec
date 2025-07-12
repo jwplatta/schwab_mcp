@@ -4,7 +4,7 @@ require_relative "lib/schwab_mcp/version"
 
 Gem::Specification.new do |spec|
   spec.name = "schwab_mcp"
-  spec.version = SchwabMcp::VERSION
+  spec.version = SchwabMCP::VERSION
   spec.authors = ["Joseph Platta"]
   spec.email = ["jwplatta@gmail.com"]
 
