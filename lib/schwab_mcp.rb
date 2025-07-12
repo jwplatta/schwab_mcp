@@ -7,12 +7,20 @@ require "schwab_rb"
 require_relative "schwab_mcp/version"
 require_relative "schwab_mcp/tools/quote_tool"
 require_relative "schwab_mcp/tools/quotes_tool"
+require_relative "schwab_mcp/tools/option_chain_tool"
 require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/loggable"
 
 
 module SchwabMCP
   class Error < StandardError; end
+
+  TOOLS = [
+    Tools::QuoteTool,
+    Tools::QuotesTool,
+    Tools::OptionChainTool,
+    Tools::HelpTool
+  ].freeze
 
   class Server
     include Loggable
@@ -23,21 +31,14 @@ module SchwabMCP
       @server = MCP::Server.new(
         name: "schwab_mcp_server",
         version: SchwabMCP::VERSION,
-        tools: [
-          Tools::QuoteTool,
-          Tools::QuotesTool,
-          Tools::HelpTool
-        ],
-        prompts: [
-          Prompts::FormatMarkdownTable
-        ]
+        tools: TOOLS,
       )
     end
 
     def start
       configure_mcp
       log_info("🚀 Starting Schwab MCP Server #{SchwabMCP::VERSION}")
-      log_info("📊 Available tools: QuoteTool, QuotesTool, HelpTool")
+      log_info("📊 Available tools: #{TOOLS.map { |tool| tool.name.split('::').last }.join(', ')}")
       log_info("📝 Logs will be written to: #{log_file_path}")
       transport = MCP::Transports::StdioTransport.new(@server)
       transport.open
