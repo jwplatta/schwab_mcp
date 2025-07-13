@@ -8,6 +8,7 @@ require_relative "schwab_mcp/version"
 require_relative "schwab_mcp/tools/quote_tool"
 require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/tools/option_chain_tool"
+require_relative "schwab_mcp/tools/find_option_strategy_tool"
 require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/loggable"
 
@@ -19,6 +20,7 @@ module SchwabMCP
     Tools::QuoteTool,
     Tools::QuotesTool,
     Tools::OptionChainTool,
+    Tools::FindOptionStrategyTool,
     Tools::HelpTool
   ].freeze
 
