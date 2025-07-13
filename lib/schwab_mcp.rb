@@ -10,6 +10,8 @@ require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/tools/option_chain_tool"
 require_relative "schwab_mcp/tools/find_option_strategy_tool"
 require_relative "schwab_mcp/tools/help_tool"
+require_relative "schwab_mcp/tools/schwab_account_details_tool"
+require_relative "schwab_mcp/tools/list_schwab_accounts_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -21,7 +23,9 @@ module SchwabMCP
     Tools::QuotesTool,
     Tools::OptionChainTool,
     Tools::FindOptionStrategyTool,
-    Tools::HelpTool
+    Tools::HelpTool,
+    Tools::SchwabAccountDetailsTool,
+    Tools::ListSchwabAccountsTool
   ].freeze
 
   class Server
@@ -49,7 +53,6 @@ module SchwabMCP
     private
 
     def configure_schwab_rb_logging
-      # Pass our logger instance to schwab_rb
       SchwabRb.configure do |config|
         config.logger = SchwabMCP::Logger.instance
         config.log_level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
