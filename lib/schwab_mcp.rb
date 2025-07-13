@@ -13,6 +13,7 @@ require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/tools/schwab_account_details_tool"
 require_relative "schwab_mcp/tools/list_schwab_accounts_tool"
 require_relative "schwab_mcp/tools/list_account_orders_tool"
+require_relative "schwab_mcp/tools/get_order_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -27,7 +28,8 @@ module SchwabMCP
     Tools::HelpTool,
     Tools::SchwabAccountDetailsTool,
     Tools::ListSchwabAccountsTool,
-    Tools::ListAccountOrdersTool
+    Tools::ListAccountOrdersTool,
+    Tools::GetOrderTool
   ].freeze
 
   class Server
