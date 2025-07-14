@@ -5,6 +5,7 @@ require "mcp/transports/stdio"
 require "tmpdir"
 require "schwab_rb"
 require_relative "schwab_mcp/version"
+require_relative "schwab_mcp/redactor"
 require_relative "schwab_mcp/tools/quote_tool"
 require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/tools/option_chain_tool"
@@ -16,6 +17,7 @@ require_relative "schwab_mcp/tools/list_account_orders_tool"
 require_relative "schwab_mcp/tools/get_order_tool"
 require_relative "schwab_mcp/tools/cancel_order_tool"
 require_relative "schwab_mcp/tools/preview_order_tool"
+require_relative "schwab_mcp/tools/place_order_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -33,7 +35,8 @@ module SchwabMCP
     Tools::ListAccountOrdersTool,
     Tools::GetOrderTool,
     Tools::CancelOrderTool,
-    Tools::PreviewOrderTool
+    Tools::PreviewOrderTool,
+    Tools::PlaceOrderTool
   ].freeze
 
   class Server
