@@ -2,6 +2,7 @@
 
 require "logger"
 require "tmpdir"
+require_relative "redactor"
 
 module SchwabMCP
   class Logger
@@ -13,43 +14,26 @@ module SchwabMCP
       end
 
       def debug(message)
-        instance.debug(redact_sensitive_data(message)) if debug_enabled?
+        instance.debug(Redactor.redact_formatted_text(message)) if debug_enabled?
       end
 
       def info(message)
-        instance.info(redact_sensitive_data(message))
+        instance.info(Redactor.redact_formatted_text(message))
       end
 
       def warn(message)
-        instance.warn(redact_sensitive_data(message))
+        instance.warn(Redactor.redact_formatted_text(message))
       end
 
       def error(message)
-        instance.error(redact_sensitive_data(message))
+        instance.error(Redactor.redact_formatted_text(message))
       end
 
       def fatal(message)
-        instance.fatal(redact_sensitive_data(message))
+        instance.fatal(Redactor.redact_formatted_text(message))
       end
 
       private
-
-      def redact_sensitive_data(message)
-        return message unless message.is_a?(String)
-
-        redacted = message.dup
-
-        # Redact account hashes (alphanumeric strings that might be hashes)
-        redacted.gsub!(/"hashValue":\s*"[A-Za-z0-9]+"/i, '"hashValue": "[REDACTED_HASH]"')
-        redacted.gsub!(/"accountNumber":\s*"?\d{8,9}"?/i, '"accountNumber": "[REDACTED_ACCOUNT]"')
-
-        redacted.gsub!(/Bearer\s+[A-Za-z0-9\.\-_]+/i, 'Bearer [REDACTED_TOKEN]')
-
-        # Redact any JSON arrays containing account mappings
-        redacted.gsub!(/\[\s*\{\s*"accountNumber":\s*"?\d{8,9}"?[^}]*\}\s*\]/i, '[{"accountNumber": "[REDACTED_ACCOUNT]", "hashValue": "[REDACTED_HASH]"}]')
-
-        redacted
-      end
 
       def create_logger
         if ENV['LOGFILE'] && !ENV['LOGFILE'].empty?
