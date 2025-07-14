@@ -2,6 +2,7 @@ require "mcp"
 require "schwab_rb"
 require "json"
 require_relative "../loggable"
+require_relative "../redactor"
 
 module SchwabMCP
   module Tools
@@ -120,7 +121,7 @@ module SchwabMCP
 
         configured_accounts.each_with_index do |account, index|
           response += "#{index + 1}. **#{account[:friendly_name]}** (`#{account[:name]}`)\n"
-          response += "   - Account ID: [REDACTED]\n"
+          response += "   - Account ID: #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
           response += "   - Status: ✅ Configured\n\n"
         end
 
@@ -132,8 +133,8 @@ module SchwabMCP
         if unconfigured.any?
           response += "**Unconfigured Accounts Available:**\n\n"
           unconfigured.each_with_index do |mapping, index|
-            response += "#{index + 1}. Account ID: [REDACTED]\n"
-            response += "   - To configure: Set `YOUR_NAME_ACCOUNT=[REDACTED]` in your .env file\n\n"
+            response += "#{index + 1}. Account ID: #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
+            response += "   - To configure: Set `YOUR_NAME_ACCOUNT=#{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}` in your .env file\n\n"
           end
         end
 

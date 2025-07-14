@@ -2,6 +2,7 @@ require "mcp"
 require "schwab_rb"
 require "json"
 require_relative "../loggable"
+require_relative "../redactor"
 
 module SchwabMCP
   module Tools
@@ -247,31 +248,10 @@ module SchwabMCP
           end
         end
 
-        redacted_data = redact_order_data(order_data)
+        redacted_data = Redactor.redact(order_data)
         formatted += "\n**Full Response (Redacted):**\n"
         formatted += "```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
-      end
-
-      def self.redact_order_data(data)
-        redacted = JSON.parse(JSON.generate(data))
-        redact_recursive(redacted)
-        redacted
-      end
-
-      def self.redact_recursive(obj)
-        case obj
-        when Hash
-          obj.each do |key, value|
-            if key.to_s.downcase.include?('account') && value.is_a?(String) && value.match?(/\A\d{8,9}\z/)
-              obj[key] = '[REDACTED]'
-            else
-              redact_recursive(value)
-            end
-          end
-        when Array
-          obj.each { |item| redact_recursive(item) }
-        end
       end
 
       def self.format_currency(amount)

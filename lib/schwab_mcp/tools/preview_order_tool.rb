@@ -3,6 +3,7 @@ require "schwab_rb"
 require "json"
 require_relative "../loggable"
 require_relative "../orders/order_factory"
+require_relative "../redactor"
 
 module SchwabMCP
   module Tools
@@ -223,10 +224,7 @@ module SchwabMCP
 
       def self.format_preview_response(response_body, params)
         parsed = JSON.parse(response_body)
-
-        if parsed.dig("orderStrategy", "accountNumber")
-          parsed["orderStrategy"]["accountNumber"] = "[REDACTED]"
-        end
+        redacted_data = Redactor.redact(parsed)
 
         begin
           strategy_summary = case params[:strategy_type]
@@ -251,11 +249,11 @@ module SchwabMCP
                          "- Price: $#{params[:price]}\n" \
                          "- Account: #{friendly_name} (#{params[:account_name]})\n\n"
 
-          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(parsed)}\n```"
+          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
 
           "#{strategy_summary}\n#{order_details}#{full_response}"
         rescue JSON::ParserError
-          "**Order Preview Response:**\n\n```\n#{pretty_generate(parsed)}\n```"
+          "**Order Preview Response:**\n\n```\n#{JSON.pretty_generate(redacted_data)}\n```"
         end
       end
     end

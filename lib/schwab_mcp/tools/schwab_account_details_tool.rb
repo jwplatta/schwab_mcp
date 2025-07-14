@@ -2,6 +2,7 @@ require "mcp"
 require "schwab_rb"
 require "json"
 require_relative "../loggable"
+require_relative "../redactor"
 
 module SchwabMCP
   module Tools
@@ -152,7 +153,7 @@ module SchwabMCP
         formatted = "**Account Information for #{friendly_name} (#{account_name}):**\n\n"
 
         if account
-          formatted += "**Account Number:** [REDACTED]\n"
+          formatted += "**Account Number:** #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
           formatted += "**Account Type:** #{account['type']}\n"
 
           if current_balances = account['currentBalances']
@@ -192,22 +193,9 @@ module SchwabMCP
             end
           end        end
 
-        redacted_data = redact_account_data(account_data)
+        redacted_data = Redactor.redact(account_data)
         formatted += "\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
-      end
-
-      def self.redact_account_data(data)
-        redacted = JSON.parse(JSON.generate(data))
-
-        if redacted.dig("securitiesAccount", "accountNumber")
-          redacted["securitiesAccount"]["accountNumber"] = "[REDACTED]"
-        end
-
-        redacted_json = JSON.generate(redacted)
-        redacted_json.gsub!(/\b\d{8,9}\b/, '[REDACTED]')
-
-        JSON.parse(redacted_json)
       end
 
       def self.format_currency(amount)

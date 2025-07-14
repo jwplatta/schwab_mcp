@@ -3,6 +3,7 @@ require "schwab_rb"
 require "json"
 require "date"
 require_relative "../loggable"
+require_relative "../redactor"
 
 module SchwabMCP
   module Tools
@@ -24,12 +25,12 @@ module SchwabMCP
           },
           from_date: {
             type: "string",
-            description: "Start date for orders in YYYY-MM-DD format (default: 60 days ago)",
+            description: "Start date for orders in YYYY-MM-DD format",
             pattern: "^\\d{4}-\\d{2}-\\d{2}$"
           },
           to_date: {
             type: "string",
-            description: "End date for orders in YYYY-MM-DD format (default: today)",
+            description: "End date for orders in YYYY-MM-DD format",
             pattern: "^\\d{4}-\\d{2}-\\d{2}$"
           },
           status: {
@@ -60,7 +61,7 @@ module SchwabMCP
             ]
           }
         },
-        required: ["account_name"]
+        required: ["account_name", "from_date", "to_date"]
       )
 
       annotations(
@@ -252,7 +253,7 @@ module SchwabMCP
           formatted += "No orders found matching the specified criteria.\n"
         end
 
-        redacted_data = redact_order_data(orders_data)
+        redacted_data = Redactor.redact(orders_data)
         formatted += "\n**Full Response (Redacted):**\n"
         formatted += "```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
@@ -283,27 +284,6 @@ module SchwabMCP
         end
 
         formatted
-      end
-
-      def self.redact_order_data(data)
-        redacted = JSON.parse(JSON.generate(data))
-        redact_recursive(redacted)
-        redacted
-      end
-
-      def self.redact_recursive(obj)
-        case obj
-        when Hash
-          obj.each do |key, value|
-            if key.to_s.downcase.include?('account') && value.is_a?(String) && value.match?(/\A\d{8,9}\z/)
-              obj[key] = '[REDACTED]'
-            else
-              redact_recursive(value)
-            end
-          end
-        when Array
-          obj.each { |item| redact_recursive(item) }
-        end
       end
 
       def self.format_currency(amount)
