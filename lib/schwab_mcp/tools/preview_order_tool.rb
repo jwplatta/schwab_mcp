@@ -1,0 +1,263 @@
+require "mcp"
+require "schwab_rb"
+require "json"
+require_relative "../loggable"
+require_relative "../orders/order_factory"
+
+module SchwabMCP
+  module Tools
+    class PreviewOrderTool < MCP::Tool
+      extend Loggable
+      description "Preview an options order (iron condor, call spread, put spread) to validate the order structure and see estimated costs/proceeds before placing"
+
+      input_schema(
+        properties: {
+          account_name: {
+            type: "string",
+            description: "Account name mapped to environment variable ending with '_ACCOUNT' (e.g., 'TRADING_BROKERAGE_ACCOUNT')",
+            pattern: "^[A-Z_]+_ACCOUNT$"
+          },
+          strategy_type: {
+            type: "string",
+            enum: ["ironcondor", "callspread", "putspread"],
+            description: "Type of options strategy to preview"
+          },
+          price: {
+            type: "number",
+            description: "Net price for the order (credit for selling strategies, debit for buying strategies)"
+          },
+          quantity: {
+            type: "integer",
+            description: "Number of contracts (default: 1)",
+            default: 1
+          },
+          order_instruction: {
+            type: "string",
+            enum: ["open", "exit"],
+            description: "Whether to open a new position or exit an existing one (default: open)",
+            default: "open"
+          },
+          # Iron Condor specific fields
+          put_short_symbol: {
+            type: "string",
+            description: "Option symbol for the short put leg (required for iron condor)"
+          },
+          put_long_symbol: {
+            type: "string",
+            description: "Option symbol for the long put leg (required for iron condor)"
+          },
+          call_short_symbol: {
+            type: "string",
+            description: "Option symbol for the short call leg (required for iron condor)"
+          },
+          call_long_symbol: {
+            type: "string",
+            description: "Option symbol for the long call leg (required for iron condor)"
+          },
+          # Vertical spread specific fields
+          short_leg_symbol: {
+            type: "string",
+            description: "Option symbol for the short leg (required for call/put spreads)"
+          },
+          long_leg_symbol: {
+            type: "string",
+            description: "Option symbol for the long leg (required for call/put spreads)"
+          }
+        },
+        required: ["account_name", "strategy_type", "price"]
+      )
+
+      annotations(
+        title: "Preview Options Order",
+        read_only_hint: true,
+        destructive_hint: false,
+        idempotent_hint: true
+      )
+
+      def self.call(server_context:, **params)
+        log_info("Previewing #{params[:strategy_type]} order for account name: #{params[:account_name]}")
+
+        unless params[:account_name].end_with?('_ACCOUNT')
+          log_error("Invalid account name format: #{params[:account_name]}")
+          return MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Error**: Account name must end with '_ACCOUNT'. Example: 'TRADING_BROKERAGE_ACCOUNT'"
+          }])
+        end
+
+        begin
+          # Validate required fields based on strategy type
+          validate_strategy_params(params)
+
+          client = SchwabRb::Auth.init_client_easy(
+            ENV['SCHWAB_API_KEY'],
+            ENV['SCHWAB_APP_SECRET'],
+            ENV['APP_CALLBACK_URL'],
+            ENV['TOKEN_PATH']
+          )
+
+          unless client
+            log_error("Failed to initialize Schwab client")
+            return MCP::Tool::Response.new([{
+              type: "text",
+              text: "**Error**: Failed to initialize Schwab client. Check your credentials."
+            }])
+          end
+
+          account_result = resolve_account_details(client, params[:account_name])
+          return account_result if account_result.is_a?(MCP::Tool::Response)
+
+          account_id, account_hash = account_result
+
+          order_builder = SchwabMCP::Orders::OrderFactory.build(
+            strategy_type: params[:strategy_type],
+            account_number: account_id,
+            price: params[:price],
+            quantity: params[:quantity] || 1,
+            order_instruction: (params[:order_instruction] || "open").to_sym,
+            # Iron Condor params
+            put_short_symbol: params[:put_short_symbol],
+            put_long_symbol: params[:put_long_symbol],
+            call_short_symbol: params[:call_short_symbol],
+            call_long_symbol: params[:call_long_symbol],
+            # Vertical spread params
+            short_leg_symbol: params[:short_leg_symbol],
+            long_leg_symbol: params[:long_leg_symbol]
+          )
+
+          log_debug("Making preview order API request")
+          response = client.preview_order(account_hash, order_builder)
+
+          if response&.body
+            log_info("Successfully previewed #{params[:strategy_type]} order")
+            formatted_response = format_preview_response(response.body, params)
+            MCP::Tool::Response.new([{
+              type: "text",
+              text: formatted_response
+            }])
+          else
+            log_warn("Empty response from Schwab API for order preview")
+            MCP::Tool::Response.new([{
+              type: "text",
+              text: "**No Data**: Empty response from Schwab API for order preview"
+            }])
+          end
+
+        rescue => e
+          log_error("Error previewing #{params[:strategy_type]} order: #{e.message}")
+          log_debug("Backtrace: #{e.backtrace.first(5).join('\n')}")
+          MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Error** previewing #{params[:strategy_type]} order: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
+          }])
+        end
+      end
+
+      private
+
+      def self.resolve_account_details(client, account_name)
+        account_id = ENV[account_name]
+        unless account_id
+          available_accounts = ENV.keys.select { |key| key.end_with?('_ACCOUNT') }
+          log_error("Account name '#{account_name}' not found in environment variables")
+          return MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+          }])
+        end
+
+        log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
+        log_debug("Fetching account numbers mapping")
+
+        account_numbers_response = client.get_account_numbers
+
+        unless account_numbers_response&.body
+          log_error("Failed to retrieve account numbers")
+          return MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Error**: Failed to retrieve account numbers from Schwab API"
+          }])
+        end
+
+        account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
+        log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
+
+        account_hash = nil
+        account_mappings.each do |mapping|
+          if mapping[:accountNumber] == account_id
+            account_hash = mapping[:hashValue]
+            break
+          end
+        end
+
+        unless account_hash
+          log_error("Account ID not found in available accounts")
+          return MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+          }])
+        end
+
+        log_debug("Found account hash for account name: #{account_name}")
+        [account_id, account_hash]
+      end
+
+      def self.validate_strategy_params(params)
+        case params[:strategy_type]
+        when 'ironcondor'
+          required_fields = [:put_short_symbol, :put_long_symbol, :call_short_symbol, :call_long_symbol]
+          missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
+          unless missing_fields.empty?
+            raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(', ')}"
+          end
+        when 'callspread', 'putspread'
+          required_fields = [:short_leg_symbol, :long_leg_symbol]
+          missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
+          unless missing_fields.empty?
+            raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(', ')}"
+          end
+        else
+          raise ArgumentError, "Unsupported strategy type: #{params[:strategy_type]}"
+        end
+      end
+
+      def self.format_preview_response(response_body, params)
+        parsed = JSON.parse(response_body)
+
+        if parsed.dig("orderStrategy", "accountNumber")
+          parsed["orderStrategy"]["accountNumber"] = "[REDACTED]"
+        end
+
+        begin
+          strategy_summary = case params[:strategy_type]
+          when 'ironcondor'
+            "**Iron Condor Preview**\n" \
+            "- Put Short: #{params[:put_short_symbol]}\n" \
+            "- Put Long: #{params[:put_long_symbol]}\n" \
+            "- Call Short: #{params[:call_short_symbol]}\n" \
+            "- Call Long: #{params[:call_long_symbol]}\n"
+          when 'callspread', 'putspread'
+            "**#{params[:strategy_type].capitalize} Preview**\n" \
+            "- Short Leg: #{params[:short_leg_symbol]}\n" \
+            "- Long Leg: #{params[:long_leg_symbol]}\n"
+          end
+
+          friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
+
+          order_details = "**Order Details:**\n" \
+                         "- Strategy: #{params[:strategy_type]}\n" \
+                         "- Action: #{params[:order_instruction] || 'open'}\n" \
+                         "- Quantity: #{params[:quantity] || 1}\n" \
+                         "- Price: $#{params[:price]}\n" \
+                         "- Account: #{friendly_name} (#{params[:account_name]})\n\n"
+
+          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(parsed)}\n```"
+
+          "#{strategy_summary}\n#{order_details}#{full_response}"
+        rescue JSON::ParserError
+          "**Order Preview Response:**\n\n```\n#{pretty_generate(parsed)}\n```"
+        end
+      end
+    end
+  end
+end
