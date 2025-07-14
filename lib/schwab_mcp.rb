@@ -22,6 +22,7 @@ require_relative "schwab_mcp/tools/place_order_tool"
 require_relative "schwab_mcp/tools/replace_order_tool"
 require_relative "schwab_mcp/tools/list_movers_tool"
 require_relative "schwab_mcp/tools/get_market_hours_tool"
+require_relative "schwab_mcp/tools/get_price_history_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -44,7 +45,8 @@ module SchwabMCP
     Tools::PlaceOrderTool,
     Tools::ReplaceOrderTool,
     Tools::ListMoversTool,
-    Tools::GetMarketHoursTool
+    Tools::GetMarketHoursTool,
+    Tools::GetPriceHistoryTool
   ].freeze
 
   class Server
