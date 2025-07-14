@@ -192,8 +192,6 @@ module SchwabMCP
         formatted = "**✅ Order Cancellation Successful**\n\n"
         formatted += "**Order ID**: #{order_id}\n"
         formatted += "**Account**: #{friendly_name} (#{account_name})\n\n"
-
-        # Include key order details
         formatted += "**Order Details:**\n"
         formatted += "- Original Status: #{order_data['status']}\n" if order_data['status']
         formatted += "- Order Type: #{order_data['orderType']}\n" if order_data['orderType']
@@ -202,7 +200,6 @@ module SchwabMCP
         formatted += "- Quantity: #{order_data['quantity']}\n" if order_data['quantity']
         formatted += "- Price: $#{format_currency(order_data['price'])}\n" if order_data['price']
 
-        # Show instruments
         if order_data['orderLegCollection'] && order_data['orderLegCollection'].any?
           formatted += "\n**Instruments:**\n"
           order_data['orderLegCollection'].each do |leg|
