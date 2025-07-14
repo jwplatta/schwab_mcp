@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server that provides AI assistants like Claude with secure access to Schwab's trading API. This gem enables natural language interactions with your Schwab brokerage account for retrieving market data, quotes, option chains, account information, and managing trades.
 
+This gem is built on top of the [schwab_rb](https://github.com/jwplatta/schwab_rb) Ruby gem, which provides the underlying Schwab API client functionality.
+
 ## Installation
 
 Add this gem to your application's Gemfile:
@@ -23,6 +25,10 @@ Before using this gem, you'll need:
 1. A Schwab Developer account and API credentials
 2. Environment variables configured (see Usage section)
 3. Valid Schwab API tokens
+
+**Dependencies:**
+- This gem depends on [schwab_rb](https://github.com/jwplatta/schwab_rb) for Schwab API communication
+- Ruby 3.1.0 or higher
 
 ## Usage
 
