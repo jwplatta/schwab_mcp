@@ -18,6 +18,7 @@ require_relative "schwab_mcp/tools/get_order_tool"
 require_relative "schwab_mcp/tools/cancel_order_tool"
 require_relative "schwab_mcp/tools/preview_order_tool"
 require_relative "schwab_mcp/tools/place_order_tool"
+require_relative "schwab_mcp/tools/replace_order_tool"
 require_relative "schwab_mcp/loggable"
 
 
@@ -36,7 +37,8 @@ module SchwabMCP
     Tools::GetOrderTool,
     Tools::CancelOrderTool,
     Tools::PreviewOrderTool,
-    Tools::PlaceOrderTool
+    Tools::PlaceOrderTool,
+    Tools::ReplaceOrderTool
   ].freeze
 
   class Server
