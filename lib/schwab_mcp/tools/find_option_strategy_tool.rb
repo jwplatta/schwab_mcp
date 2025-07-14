@@ -94,7 +94,7 @@ module SchwabMCP
 
       def self.call(strategy_type:, underlying_symbol:, expiration_date:,
                     expiration_type: nil, settlement_type: nil, option_root: nil,
-                    max_delta: 0.15, max_spread: 20.0, min_credit: 100.0,
+                    max_delta: 0.15, max_spread: 20.0, min_credit: 0.0,
                     min_open_interest: 0, dist_from_strike: 0.0, quantity: 1,
                     from_date: nil, to_date: nil, server_context:)
 
