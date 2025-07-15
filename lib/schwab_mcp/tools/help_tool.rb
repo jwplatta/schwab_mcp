@@ -57,7 +57,7 @@ module SchwabMCP
           - **list_movers_tool**: Get top ten movers for a given index
 
           ### Option Strategy Tools:
-          - **find_option_strategy_tool**: Find option strategies (iron condor, call spread, put spread)
+          - **option_strategy_finder_tool**: Find option strategies (iron condor, call spread, put spread)
           - **preview_order_tool**: Preview an options order before placing (⚠️ SAFE PREVIEW)
           - **place_order_tool**: Place an options order for execution (⚠️ DESTRUCTIVE)
           - **replace_order_tool**: Replace an existing order with a new one (⚠️ DESTRUCTIVE)
@@ -84,7 +84,7 @@ module SchwabMCP
 
           # Options
           option_chain_tool(symbol: "SPX", contract_type: "ALL")
-          find_option_strategy_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
+          option_strategy_finder_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
           preview_order_tool(account_name: "TRADING_BROKERAGE_ACCOUNT", strategy_type: "ironcondor", price: 1.50, quantity: 1)
 
           # Account Management
@@ -197,7 +197,7 @@ module SchwabMCP
 
           **Example**: `option_chain_tool(symbol: "SPX", contract_type: "ALL")`
 
-          ### find_option_strategy_tool
+          ### option_strategy_finder_tool
           Find option strategies using sophisticated algorithms.
           **Parameters**:
           - `strategy_type` (required) - "ironcondor", "callspread", or "putspread"
@@ -212,8 +212,8 @@ module SchwabMCP
 
           **Examples**:
           ```
-          find_option_strategy_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
-          find_option_strategy_tool(strategy_type: "callspread", underlying_symbol: "SPY", expiration_date: "2025-01-10", max_delta: 0.20, min_credit: 50.0)
+          option_strategy_finder_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
+          option_strategy_finder_tool(strategy_type: "callspread", underlying_symbol: "SPY", expiration_date: "2025-01-10", max_delta: 0.20, min_credit: 50.0)
           ```
 
           ## Order Management Tools
