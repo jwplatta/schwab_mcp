@@ -3,6 +3,7 @@ require "schwab_rb"
 require "json"
 require "date"
 require_relative "../loggable"
+require_relative "../option_chain_filter"
 
 module SchwabMCP
   module Tools
@@ -87,6 +88,30 @@ module SchwabMCP
             type: "string",
             description: "Client entitlement",
             enum: ["PP", "NP", "PN"]
+          },
+          max_delta: {
+            type: "number",
+            description: "Maximum delta value for option filtering",
+            minimum: 0,
+            maximum: 1
+          },
+          min_delta: {
+            type: "number",
+            description: "Minimum delta value for option filtering",
+            minimum: 0,
+            maximum: 1
+          },
+          max_strike: {
+            type: "number",
+            description: "Maximum strike price for option filtering"
+          },
+          min_strike: {
+            type: "number",
+            description: "Minimum strike price for option filtering"
+          },
+          expiration_date: {
+            type: "string",
+            description: "Filter options by specific expiration date (YYYY-MM-DD format)"
           }
         },
         required: ["symbol"]
@@ -103,7 +128,8 @@ module SchwabMCP
                     strategy: nil, strike_range: nil, option_type: nil, exp_month: nil,
                     interval: nil, strike: nil, from_date: nil, to_date: nil, volatility: nil,
                     underlying_price: nil, interest_rate: nil, days_to_expiration: nil,
-                    entitlement: nil, server_context:)
+                    entitlement: nil, max_delta: nil, min_delta: nil, max_strike: nil,
+                    min_strike: nil, expiration_date: nil, server_context:)
         log_info("Getting option chain for symbol: #{symbol}")
 
         begin
@@ -122,7 +148,6 @@ module SchwabMCP
             }])
           end
 
-          # Build parameters hash, only including non-nil values
           params = {}
           params[:contract_type] = contract_type if contract_type
           params[:strike_count] = strike_count if strike_count
@@ -131,8 +156,16 @@ module SchwabMCP
           params[:interval] = interval if interval
           params[:strike] = strike if strike
           params[:strike_range] = strike_range if strike_range
-          params[:from_date] = Date.parse(from_date) if from_date
-          params[:to_date] = Date.parse(to_date) if to_date
+
+          if expiration_date
+            exp_date = Date.parse(expiration_date)
+            params[:from_date] = exp_date
+            params[:to_date] = exp_date
+          else
+            params[:from_date] = Date.parse(from_date) if from_date
+            params[:to_date] = Date.parse(to_date) if to_date
+          end
+
           params[:volatility] = volatility if volatility
           params[:underlying_price] = underlying_price if underlying_price
           params[:interest_rate] = interest_rate if interest_rate
@@ -147,10 +180,59 @@ module SchwabMCP
           if response&.body
             log_info("Successfully retrieved option chain for #{symbol}")
 
-            MCP::Tool::Response.new([{
-              type: "text",
-              text: "#{response.body}\n"
-            }])
+            if max_delta || min_delta || max_strike || min_strike
+              begin
+                parsed_response = JSON.parse(response.body, symbolize_names: true)
+
+                log_debug("Applying option chain filtering")
+
+                filter = SchwabMCP::OptionChainFilter.new(
+                  expiration_date: Date.parse(expiration_date),
+                  max_delta: max_delta || 1.0,
+                  min_delta: min_delta || 0.0,
+                  max_strike: max_strike,
+                  min_strike: min_strike
+                )
+
+                filtered_response = parsed_response.dup
+
+                if parsed_response[:callExpDateMap]
+                  filtered_calls = filter.select(parsed_response[:callExpDateMap])
+                  log_debug("Filtered #{filtered_calls.size} call options")
+
+                  filtered_response[:callExpDateMap] = reconstruct_exp_date_map(
+                    filtered_calls, expiration_date
+                  )
+                end
+
+                if parsed_response[:putExpDateMap]
+                  filtered_puts = filter.select(parsed_response[:putExpDateMap])
+                  log_debug("Filtered #{filtered_puts.size} put options")
+
+                  filtered_response[:putExpDateMap] = reconstruct_exp_date_map(
+                    filtered_puts, expiration_date)
+                end
+
+                File.open("filtered_option_chain_#{symbol}_#{expiration_date}.json", "w") do |f|
+                  f.write(JSON.pretty_generate(filtered_response))
+                end
+
+                return MCP::Tool::Response.new([{
+                  type: "text",
+                  text: "#{JSON.pretty_generate(filtered_response)}\n"
+                }])
+              rescue JSON::ParserError => e
+                log_error("Failed to parse response for filtering: #{e.message}")
+              rescue => e
+                log_error("Error applying option chain filter: #{e.message}")
+              end
+            else
+              log_debug("No filtering applied, returning full response")
+              return MCP::Tool::Response.new([{
+                type: "text",
+                text: "#{JSON.pretty_generate(response.body)}\n"
+              }])
+            end
           else
             log_warn("Empty response from Schwab API for option chain: #{symbol}")
             MCP::Tool::Response.new([{
@@ -167,6 +249,25 @@ module SchwabMCP
             text: "**Error** retrieving option chain for #{symbol}: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
           }])
         end
+      end
+
+      private
+
+      def self.reconstruct_exp_date_map(filtered_options, target_expiration_date)
+        return {} if filtered_options.empty?
+
+        grouped = {}
+
+        filtered_options.each do |option|
+          exp_date_key = "#{target_expiration_date}:#{option[:daysToExpiration] || 0}"
+          strike_key = "#{option[:strikePrice]}"
+
+          grouped[exp_date_key] ||= {}
+          grouped[exp_date_key][strike_key] ||= []
+          grouped[exp_date_key][strike_key] << option
+        end
+
+        grouped
       end
     end
   end
