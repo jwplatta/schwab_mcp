@@ -7,7 +7,7 @@ require_relative "../option_chain_filter"
 
 module SchwabMCP
   module Tools
-    class FindOptionStrategyTool < MCP::Tool
+    class OptionStrategyFinderTool < MCP::Tool
       extend Loggable
       description "Find option strategies (iron condor, call spread, put spread) using Schwab API"
 
@@ -247,8 +247,8 @@ module SchwabMCP
           quantity: quantity
         )
 
-        call_spreads = filter.find_spread_candidates(call_options, 'call')
-        put_spreads = filter.find_spread_candidates(put_options, 'put')
+        call_spreads = filter.find_spreads(call_options, 'call')
+        put_spreads = filter.find_spreads(put_options, 'put')
 
         return { status: 'not_found' } if call_spreads.empty? || put_spreads.empty?
 
@@ -308,7 +308,7 @@ module SchwabMCP
           quantity: quantity
         )
 
-        spreads = filter.find_spread_candidates(options_map, spread_type)
+        spreads = filter.find_spreads(options_map, spread_type)
 
         return { status: 'not_found' } if spreads.empty?
 
