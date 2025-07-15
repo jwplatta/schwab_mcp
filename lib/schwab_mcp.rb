@@ -9,7 +9,7 @@ require_relative "schwab_mcp/redactor"
 require_relative "schwab_mcp/tools/quote_tool"
 require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/tools/option_chain_tool"
-require_relative "schwab_mcp/tools/find_option_strategy_tool"
+require_relative "schwab_mcp/tools/option_strategy_finder_tool"
 require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/tools/schwab_account_details_tool"
 require_relative "schwab_mcp/tools/list_schwab_accounts_tool"
@@ -33,7 +33,7 @@ module SchwabMCP
     Tools::QuoteTool,
     Tools::QuotesTool,
     Tools::OptionChainTool,
-    Tools::FindOptionStrategyTool,
+    Tools::OptionStrategyFinderTool,
     Tools::HelpTool,
     Tools::SchwabAccountDetailsTool,
     Tools::ListSchwabAccountsTool,
