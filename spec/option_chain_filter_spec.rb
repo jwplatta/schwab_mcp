@@ -80,7 +80,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
     end
   end
 
-  describe '#find_spread_candidates' do
+  describe '#find_spreads' do
     let(:sample_options_map) do
       {
         "2025-01-17:2" => {
@@ -124,7 +124,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           dist_from_strike: 0.05
         )
 
-        spreads = put_filter.find_spread_candidates(sample_options_map, 'put')
+        spreads = put_filter.find_spreads(sample_options_map, 'put')
 
         expect(spreads).not_to be_empty
         expect(spreads.length).to be >= 1
@@ -155,7 +155,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           dist_from_strike: 0.05
         )
 
-        spreads = put_filter.find_spread_candidates(sample_options_map, 'put')
+        spreads = put_filter.find_spreads(sample_options_map, 'put')
 
         # Find the 5500/5490 spread
         spread_5500_5490 = spreads.find do |spread|
@@ -207,7 +207,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           dist_from_strike: 0.04 # Lower distance requirement
         )
 
-        spreads = call_filter.find_spread_candidates(call_options_map, 'call')
+        spreads = call_filter.find_spreads(call_options_map, 'call')
 
         expect(spreads).not_to be_empty
 
@@ -232,7 +232,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
       end
 
       it 'returns empty array when no options pass filters' do
-        spreads = filter.find_spread_candidates(invalid_options_map, 'put')
+        spreads = filter.find_spreads(invalid_options_map, 'put')
         expect(spreads).to be_empty
       end
     end
@@ -310,7 +310,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           }
         }
 
-        spreads = filter.find_spread_candidates(matching_options, 'put')
+        spreads = filter.find_spreads(matching_options, 'put')
         expect(spreads).not_to be_empty
       end
 
@@ -322,7 +322,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           }
         }
 
-        spreads = filter.find_spread_candidates(non_matching_options, 'put')
+        spreads = filter.find_spreads(non_matching_options, 'put')
         expect(spreads).to be_empty
       end
 
@@ -344,7 +344,7 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           dist_from_strike: 0.05
         )
 
-        spreads = test_filter.find_spread_candidates(symbol_key_options, 'put')
+        spreads = test_filter.find_spreads(symbol_key_options, 'put')
         expect(spreads).not_to be_empty
       end
     end
