@@ -86,11 +86,10 @@ module SchwabMCP
 
         begin
           validate_strategy_params(params)
-
           client = SchwabRb::Auth.init_client_easy(
             ENV['SCHWAB_API_KEY'],
             ENV['SCHWAB_APP_SECRET'],
-            ENV['APP_CALLBACK_URL'],
+            ENV['SCHWAB_CALLBACK_URI'],
             ENV['TOKEN_PATH']
           )
 

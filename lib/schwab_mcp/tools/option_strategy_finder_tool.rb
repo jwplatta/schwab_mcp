@@ -111,7 +111,7 @@ module SchwabMCP
           client = SchwabRb::Auth.init_client_easy(
             ENV['SCHWAB_API_KEY'],
             ENV['SCHWAB_APP_SECRET'],
-            ENV['APP_CALLBACK_URL'],
+            ENV['SCHWAB_CALLBACK_URI'],
             ENV['TOKEN_PATH']
           )
 
@@ -131,6 +131,7 @@ module SchwabMCP
                          strategy_type.downcase == 'putspread' ? 'PUT' : 'ALL'
 
           log_debug("Fetching option chain for #{underlying_symbol} (#{contract_type})")
+
           response = client.get_option_chain(
             underlying_symbol.upcase,
             contract_type: contract_type,
