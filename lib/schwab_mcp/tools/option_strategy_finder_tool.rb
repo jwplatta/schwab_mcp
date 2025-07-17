@@ -150,9 +150,6 @@ module SchwabMCP
 
           option_data = JSON.parse(response.body, symbolize_names: true)
 
-          File.open("./#{underlying_symbol}_option_chain_#{expiration_date}.json", "w") do |f|
-            f.write(JSON.pretty_generate(option_data))
-          end
           result = find_strategy(
             strategy_type: strategy_type.downcase,
             option_data: option_data,
