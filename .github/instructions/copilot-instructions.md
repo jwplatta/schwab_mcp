@@ -1,3 +1,7 @@
+---
+apply: ****
+---
+
 # GitHub Copilot Instructions for SchwabMCP
 
 ## Project Overview
