@@ -24,6 +24,7 @@ require_relative "schwab_mcp/tools/list_movers_tool"
 require_relative "schwab_mcp/tools/get_market_hours_tool"
 require_relative "schwab_mcp/tools/get_price_history_tool"
 require_relative "schwab_mcp/loggable"
+require_relative "schwab_mcp/schwab_client_factory"
 
 
 module SchwabMCP

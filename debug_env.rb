@@ -29,13 +29,9 @@ end
 puts "\n=== Testing Client Initialization ==="
 begin
   require 'schwab_rb'
+  require_relative 'lib/schwab_mcp/schwab_client_factory'
 
-  client = SchwabRb::Auth.init_client_easy(
-    ENV['SCHWAB_API_KEY'],
-    ENV['SCHWAB_APP_SECRET'],
-    ENV['APP_CALLBACK_URL'],
-    ENV['TOKEN_PATH'] || './token.json'
-  )
+  client = SchwabMCP::SchwabClientFactory.create_client
 
   if client
     puts "Client initialized: SUCCESS"
