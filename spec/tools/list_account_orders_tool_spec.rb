@@ -13,11 +13,11 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
     before do
       allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(mock_client)
-      allow(account1).to receive(:account_number).and_return("123456789")
+      allow(account1).to receive(:account_number).and_return("12345678")
       allow(account1).to receive(:hash_value).and_return("hash1")
 
       allow(account_numbers).to receive(:size).and_return(1)
-      allow(account_numbers).to receive(:find_hash_value).with("123456789").and_return("hash1")
+      allow(account_numbers).to receive(:find_hash_value).with("12345678").and_return("hash1")
 
       # Set up mock order data
       allow(mock_order).to receive(:order_id).and_return("12345")
@@ -74,7 +74,7 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
     context "when account hash not found" do
       it "returns error response" do
         allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
-        allow(account_numbers).to receive(:find_hash_value).with("123456789").and_return(nil)
+        allow(account_numbers).to receive(:find_hash_value).with("12345678").and_return(nil)
 
         response = described_class.call(account_name: "TRADING_BROKERAGE_ACCOUNT", server_context: {})
 
@@ -94,7 +94,7 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
         expect(response).to be_a(MCP::Tool::Response)
         content_text = response.content.first[:text]
-        
+
         expect(content_text).to include("Orders for Trading Brokerage (TRADING_BROKERAGE_ACCOUNT)")
         expect(content_text).to include("Total Orders: 1")
         expect(content_text).to include("Order ID: 12345")
@@ -138,7 +138,7 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
           to_date: "2023-01-31",
           server_context: {}
         )
-        
+
         expect(response.content.first[:text]).to include("From Date: 2023-01-01")
         expect(response.content.first[:text]).to include("To Date: 2023-01-31")
       end
@@ -155,7 +155,7 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
         expect(response).to be_a(MCP::Tool::Response)
         content_text = response.content.first[:text]
-        
+
         expect(content_text).to include("Total Orders: 0")
         expect(content_text).to include("No orders found matching the specified criteria")
       end
