@@ -220,7 +220,6 @@ module SchwabMCP
           formatted += "\n"
         end
 
-        # Orders is now an array of Order data objects
         orders_array = orders.is_a?(Array) ? orders : [orders]
 
         formatted += "**Orders Summary:**\n"
