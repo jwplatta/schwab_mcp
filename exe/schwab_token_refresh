@@ -5,6 +5,7 @@
 require 'pry'
 require 'dotenv'
 require 'schwab_rb'
+require_relative '../lib/schwab_mcp/schwab_client_factory'
 
 Dotenv.load
 
@@ -25,13 +26,13 @@ token_path = ENV['TOKEN_PATH']
 puts "Token path: #{token_path}"
 
 begin
-  SchwabRb::Auth.init_client_easy(
-    ENV['SCHWAB_API_KEY'],
-    ENV['SCHWAB_APP_SECRET'],
-    ENV['SCHWAB_CALLBACK_URI'],
-    token_path
-  )
-  puts "✅ Token refresh completed successfully"
+  client = SchwabMCP::SchwabClientFactory.create_client
+  if client
+    puts "✅ Token refresh completed successfully"
+  else
+    puts "❌ Token refresh failed: Unable to create client"
+    exit 1
+  end
 rescue => e
   puts "❌ Token refresh failed: #{e.message}"
   exit 1
