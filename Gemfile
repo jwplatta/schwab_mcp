@@ -12,7 +12,7 @@ gem "rspec", "~> 3.0"
 
 gem "rubocop", "~> 1.21"
 
-gem 'schwab_rb', git: 'https://github.com/jwplatta/schwab_rb.git', ref: '96641a3d4e80296a7c4fd895c7a2086fe953235f'
+gem 'schwab_rb', '~> 0.2.0'
 gem 'mcp'
 gem 'dotenv'
 gem 'pry'
