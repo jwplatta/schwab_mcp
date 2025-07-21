@@ -42,9 +42,9 @@ module SchwabMCP
           end
 
           log_debug("Fetching account numbers from Schwab API")
-          account_numbers_response = client.get_account_numbers
+          account_numbers = client.get_account_numbers
 
-          unless account_numbers_response&.body
+          unless account_numbers
             log_error("Failed to retrieve account numbers")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -52,10 +52,9 @@ module SchwabMCP
             }])
           end
 
-          account_mappings = JSON.parse(account_numbers_response.body)
-          log_debug("Retrieved #{account_mappings.length} accounts from Schwab API")
+          log_debug("Retrieved #{account_numbers.size} accounts from Schwab API")
 
-          configured_accounts = find_configured_accounts(account_mappings)
+          configured_accounts = find_configured_accounts(account_numbers)
 
           if configured_accounts.empty?
             return MCP::Tool::Response.new([{
@@ -64,7 +63,7 @@ module SchwabMCP
             }])
           end
 
-          formatted_response = format_accounts_list(configured_accounts, account_mappings)
+          formatted_response = format_accounts_list(configured_accounts, account_numbers)
 
           MCP::Tool::Response.new([{
             type: "text",
@@ -89,9 +88,9 @@ module SchwabMCP
 
       private
 
-      def self.find_configured_accounts(account_mappings)
-        # Get all account IDs from Schwab API
-        schwab_account_ids = account_mappings.map { |mapping| mapping["accountNumber"] }
+      def self.find_configured_accounts(account_numbers)
+        # Get all account IDs from Schwab API data object
+        schwab_account_ids = account_numbers.account_numbers
 
         # Find environment variables ending with "_ACCOUNT"
         configured = []
@@ -99,11 +98,12 @@ module SchwabMCP
           next unless key.end_with?('_ACCOUNT')
 
           if schwab_account_ids.include?(value)
+            account = account_numbers.find_by_account_number(value)
             configured << {
               name: key,
               friendly_name: friendly_name_from_env_key(key),
               account_id: value,
-              mapping: account_mappings.find { |m| m["accountNumber"] == value }
+              account: account
             }
           end
         end
@@ -116,7 +116,7 @@ module SchwabMCP
         env_key.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
       end
 
-      def self.format_accounts_list(configured_accounts, all_mappings)
+      def self.format_accounts_list(configured_accounts, account_numbers)
         response = "**Configured Schwab Accounts:**\n\n"
 
         configured_accounts.each_with_index do |account, index|
@@ -126,13 +126,13 @@ module SchwabMCP
         end
 
         # Show unconfigured accounts (if any)
-        unconfigured = all_mappings.reject do |mapping|
-          configured_accounts.any? { |config| config[:account_id] == mapping["accountNumber"] }
+        unconfigured_accounts = account_numbers.accounts.reject do |account_obj|
+          configured_accounts.any? { |config| config[:account_id] == account_obj.account_number }
         end
 
-        if unconfigured.any?
+        if unconfigured_accounts.any?
           response += "**Unconfigured Accounts Available:**\n\n"
-          unconfigured.each_with_index do |mapping, index|
+          unconfigured_accounts.each_with_index do |account_obj, index|
             response += "#{index + 1}. Account ID: #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
             response += "   - To configure: Set `YOUR_NAME_ACCOUNT=#{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}` in your .env file\n\n"
           end
