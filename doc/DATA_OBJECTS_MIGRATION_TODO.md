@@ -12,7 +12,7 @@ July 21, 2025
 - [x] **schwab_account_details_tool.rb** - ✅ COMPLETED - Updated to use Account and AccountNumbers data objects
 - [x] **list_schwab_accounts_tool.rb** - ✅ COMPLETED - Updated to use AccountNumbers data object
 
-### ✅ Order-related Tools  
+### ✅ Order-related Tools
 - [ ] **list_account_orders_tool.rb** - Update to use Order data objects
 - [ ] **get_order_tool.rb** - Update to use Order data object
 - [ ] **cancel_order_tool.rb** - Update to use Order data object (if applicable)

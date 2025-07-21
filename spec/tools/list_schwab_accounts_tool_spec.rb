@@ -15,7 +15,7 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
       allow(account1).to receive(:hash_value).and_return("hash1")
       allow(account2).to receive(:account_number).and_return("987654321")
       allow(account2).to receive(:hash_value).and_return("hash2")
-      
+
       allow(account_numbers).to receive(:size).and_return(2)
       allow(account_numbers).to receive(:account_numbers).and_return(["123456789", "987654321"])
       allow(account_numbers).to receive(:accounts).and_return([account1, account2])
@@ -26,9 +26,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
     context "when client initialization fails" do
       it "returns error response" do
         allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(nil)
-        
+
         response = described_class.call(server_context: {})
-        
+
         expect(response).to be_a(MCP::Tool::Response)
         expect(response.content.first[:text]).to include("Failed to initialize Schwab client")
       end
@@ -37,9 +37,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
     context "when API call fails" do
       it "returns error response" do
         allow(mock_client).to receive(:get_account_numbers).and_return(nil)
-        
+
         response = described_class.call(server_context: {})
-        
+
         expect(response).to be_a(MCP::Tool::Response)
         expect(response.content.first[:text]).to include("Failed to retrieve account numbers")
       end
@@ -49,9 +49,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
       it "returns no configured accounts message" do
         allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
         allow(ENV).to receive(:each).and_return({}.each)
-        
+
         response = described_class.call(server_context: {})
-        
+
         expect(response).to be_a(MCP::Tool::Response)
         expect(response.content.first[:text]).to include("No Configured Accounts Found")
       end
@@ -61,9 +61,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
       it "returns formatted list of accounts" do
         allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
         allow(ENV).to receive(:each).and_yield("TRADING_BROKERAGE_ACCOUNT", "123456789")
-        
+
         response = described_class.call(server_context: {})
-        
+
         expect(response).to be_a(MCP::Tool::Response)
         expect(response.content.first[:text]).to include("Configured Schwab Accounts")
         expect(response.content.first[:text]).to include("Trading Brokerage")
@@ -84,9 +84,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
 
     it "finds configured accounts from environment variables" do
       allow(ENV).to receive(:each).and_yield("TRADING_ACCOUNT", "123456789")
-      
+
       result = described_class.send(:find_configured_accounts, account_numbers)
-      
+
       expect(result).to be_an(Array)
       expect(result.size).to eq(1)
       expect(result.first[:name]).to eq("TRADING_ACCOUNT")
@@ -96,9 +96,9 @@ RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
 
     it "ignores non-account environment variables" do
       allow(ENV).to receive(:each).and_yield("API_KEY", "some_key")
-      
+
       result = described_class.send(:find_configured_accounts, account_numbers)
-      
+
       expect(result).to be_empty
     end
   end

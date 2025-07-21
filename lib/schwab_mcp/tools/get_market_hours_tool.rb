@@ -57,7 +57,6 @@ module SchwabMCP
             }])
           end
 
-          # Parse date if provided
           parsed_date = nil
           if date
             begin

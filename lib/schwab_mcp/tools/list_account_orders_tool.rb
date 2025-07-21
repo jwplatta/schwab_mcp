@@ -111,9 +111,9 @@ module SchwabMCP
           log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
           log_debug("Fetching account numbers mapping")
 
-          account_numbers_response = client.get_account_numbers
+          account_numbers = client.get_account_numbers
 
-          unless account_numbers_response&.body
+          unless account_numbers
             log_error("Failed to retrieve account numbers")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -121,22 +121,15 @@ module SchwabMCP
             }])
           end
 
-          account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
-          log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
+          log_debug("Account numbers retrieved (#{account_numbers.size} accounts found)")
 
-          account_hash = nil
-          account_mappings.each do |mapping|
-            if mapping[:accountNumber] == account_id
-              account_hash = mapping[:hashValue]
-              break
-            end
-          end
+          account_hash = account_numbers.find_hash_value(account_id)
 
           unless account_hash
             log_error("Account ID not found in available accounts")
             return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+              text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
             }])
           end
 
@@ -171,7 +164,7 @@ module SchwabMCP
 
           log_debug("Fetching orders with params - max_results: #{max_results}, from_datetime: #{from_datetime}, to_datetime: #{to_datetime}, status: #{status}")
 
-          orders_response = client.get_account_orders(
+          orders = client.get_account_orders(
             account_hash,
             max_results: max_results,
             from_entered_datetime: from_datetime,
@@ -179,11 +172,10 @@ module SchwabMCP
             status: status
           )
 
-          if orders_response&.body
+          if orders
             log_info("Successfully retrieved orders for #{account_name}")
-            orders_data = JSON.parse(orders_response.body)
 
-            formatted_response = format_orders_data(orders_data, account_name, {
+            formatted_response = format_orders_data(orders, account_name, {
               max_results: max_results,
               from_date: from_date,
               to_date: to_date,
@@ -202,12 +194,6 @@ module SchwabMCP
             }])
           end
 
-        rescue JSON::ParserError => e
-          log_error("JSON parsing error: #{e.message}")
-          MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error**: Failed to parse API response: #{e.message}"
-          }])
         rescue => e
           log_error("Error retrieving orders for #{account_name}: #{e.message}")
           log_debug("Backtrace: #{e.backtrace.first(3).join('\n')}")
@@ -220,7 +206,7 @@ module SchwabMCP
 
       private
 
-      def self.format_orders_data(orders_data, account_name, filters)
+      def self.format_orders_data(orders, account_name, filters)
         friendly_name = account_name.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
 
         formatted = "**Orders for #{friendly_name} (#{account_name}):**\n\n"
@@ -234,26 +220,25 @@ module SchwabMCP
           formatted += "\n"
         end
 
-        if orders_data.is_a?(Array)
-          orders = orders_data
-        else
-          orders = [orders_data]
-        end
+        # Orders is now an array of Order data objects
+        orders_array = orders.is_a?(Array) ? orders : [orders]
 
         formatted += "**Orders Summary:**\n"
-        formatted += "- Total Orders: #{orders.length}\n\n"
+        formatted += "- Total Orders: #{orders_array.length}\n\n"
 
-        if orders.length > 0
+        if orders_array.length > 0
           formatted += "**Order Details:**\n"
-          orders.each_with_index do |order, index|
+          orders_array.each_with_index do |order, index|
             formatted += format_single_order(order, index + 1)
-            formatted += "\n" unless index == orders.length - 1
+            formatted += "\n" unless index == orders_array.length - 1
           end
         else
           formatted += "No orders found matching the specified criteria.\n"
         end
 
-        redacted_data = Redactor.redact(orders_data)
+        # Convert data objects to hash for redaction and display
+        orders_hash = orders_array.map(&:to_h)
+        redacted_data = Redactor.redact(orders_hash)
         formatted += "\n**Full Response (Redacted):**\n"
         formatted += "```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
@@ -261,23 +246,22 @@ module SchwabMCP
 
       def self.format_single_order(order, order_num)
         formatted = "**Order #{order_num}:**\n"
-        formatted += "- Order ID: #{order['orderId']}\n" if order['orderId']
-        formatted += "- Status: #{order['status']}\n" if order['status']
-        formatted += "- Order Type: #{order['orderType']}\n" if order['orderType']
-        formatted += "- Session: #{order['session']}\n" if order['session']
-        formatted += "- Duration: #{order['duration']}\n" if order['duration']
-        formatted += "- Entered Time: #{order['enteredTime']}\n" if order['enteredTime']
-        formatted += "- Close Time: #{order['closeTime']}\n" if order['closeTime']
-        formatted += "- Quantity: #{order['quantity']}\n" if order['quantity']
-        formatted += "- Filled Quantity: #{order['filledQuantity']}\n" if order['filledQuantity']
-        formatted += "- Price: $#{format_currency(order['price'])}\n" if order['price']
+        formatted += "- Order ID: #{order.order_id}\n" if order.order_id
+        formatted += "- Status: #{order.status}\n" if order.status
+        formatted += "- Order Type: #{order.order_type}\n" if order.order_type
+        formatted += "- Duration: #{order.duration}\n" if order.duration
+        formatted += "- Entered Time: #{order.entered_time}\n" if order.entered_time
+        formatted += "- Close Time: #{order.close_time}\n" if order.close_time
+        formatted += "- Quantity: #{order.quantity}\n" if order.quantity
+        formatted += "- Filled Quantity: #{order.filled_quantity}\n" if order.filled_quantity
+        formatted += "- Price: $#{format_currency(order.price)}\n" if order.price
 
-        if order['orderLegCollection'] && order['orderLegCollection'].any?
+        if order.order_leg_collection && order.order_leg_collection.any?
           formatted += "- Instruments:\n"
-          order['orderLegCollection'].each do |leg|
-            if leg['instrument']
-              symbol = leg['instrument']['symbol']
-              instruction = leg['instruction']
+          order.order_leg_collection.each do |leg|
+            if leg.instrument
+              symbol = leg.instrument.symbol
+              instruction = leg.instruction
               formatted += "  * #{symbol} - #{instruction}\n"
             end
           end

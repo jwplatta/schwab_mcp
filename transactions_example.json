@@ -1,0 +1,488 @@
+[
+  {
+    "activityId": 99500791463,
+    "time": "2025-07-14T14:44:27+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:44:27+0000",
+    "positionId": 2916240255,
+    "orderId": 1003712251784,
+    "netAmount": 17.87,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06155000",
+          "description": "S & P 500 INDEX 07/14/2025 $6155 Put",
+          "instrumentId": 236651316,
+          "closingPrice": 0.925,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6155.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": -1.0,
+        "cost": 19.0,
+        "price": 0.19,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  },
+  {
+    "activityId": 99500791464,
+    "time": "2025-07-14T14:44:27+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:44:27+0000",
+    "positionId": 2916240256,
+    "orderId": 1003712251784,
+    "netAmount": -25.13,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06165000",
+          "description": "S & P 500 INDEX 07/14/2025 $6165 Put",
+          "instrumentId": 236791336,
+          "closingPrice": 1.2,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6165.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": 1.0,
+        "cost": -24.0,
+        "price": 0.24,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  },
+  {
+    "activityId": 99500791215,
+    "time": "2025-07-14T14:43:55+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:43:55+0000",
+    "positionId": 2916240255,
+    "orderId": 1003712251784,
+    "netAmount": 18.87,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06155000",
+          "description": "S & P 500 INDEX 07/14/2025 $6155 Put",
+          "instrumentId": 236651316,
+          "closingPrice": 0.925,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6155.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": -1.0,
+        "cost": 20.0,
+        "price": 0.2,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  },
+  {
+    "activityId": 99500791216,
+    "time": "2025-07-14T14:43:55+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:43:55+0000",
+    "positionId": 2916240256,
+    "orderId": 1003712251784,
+    "netAmount": -26.13,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06165000",
+          "description": "S & P 500 INDEX 07/14/2025 $6165 Put",
+          "instrumentId": 236791336,
+          "closingPrice": 1.2,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6165.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": 1.0,
+        "cost": -25.0,
+        "price": 0.25,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  },
+  {
+    "activityId": 99498794027,
+    "time": "2025-07-14T14:26:40+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:26:40+0000",
+    "positionId": 2916240256,
+    "orderId": 1003712251784,
+    "netAmount": -26.13,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06165000",
+          "description": "S & P 500 INDEX 07/14/2025 $6165 Put",
+          "instrumentId": 236791336,
+          "closingPrice": 1.2,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6165.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": 1.0,
+        "cost": -25.0,
+        "price": 0.25,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  },
+  {
+    "activityId": 99498794026,
+    "time": "2025-07-14T14:26:40+0000",
+    "accountNumber": "[REDACTED_ACCOUNT]",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "MARGIN",
+    "tradeDate": "2025-07-14T14:26:40+0000",
+    "positionId": 2916240255,
+    "orderId": 1003712251784,
+    "netAmount": 18.87,
+    "transferItems": [
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.65,
+        "cost": -0.65,
+        "feeType": "COMMISSION"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.01,
+        "cost": -0.01,
+        "feeType": "OPT_REG_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "CURRENCY",
+          "status": "ACTIVE",
+          "symbol": "CURRENCY_USD",
+          "description": "USD currency",
+          "instrumentId": 1,
+          "closingPrice": 0.0
+        },
+        "amount": 0.47,
+        "cost": -0.47,
+        "feeType": "INDEX_OPTION_FEE"
+      },
+      {
+        "instrument": {
+          "assetType": "OPTION",
+          "status": "ACTIVE",
+          "symbol": "SPXW  250714P06155000",
+          "description": "S & P 500 INDEX 07/14/2025 $6155 Put",
+          "instrumentId": 236651316,
+          "closingPrice": 0.925,
+          "expirationDate": "2025-07-14T04:00:00+0000",
+          "optionDeliverables": [
+            {
+              "rootSymbol": "SPXW",
+              "strikePercent": 100,
+              "deliverableNumber": 1,
+              "deliverableUnits": 100.0
+            }
+          ],
+          "optionPremiumMultiplier": 100,
+          "putCall": "PUT",
+          "strikePrice": 6155.0,
+          "type": "VANILLA",
+          "underlyingSymbol": "SPXW"
+        },
+        "amount": -1.0,
+        "cost": 20.0,
+        "price": 0.2,
+        "positionEffect": "CLOSING"
+      }
+    ]
+  }
+]

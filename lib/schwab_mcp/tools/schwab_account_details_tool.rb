@@ -171,7 +171,7 @@ module SchwabMCP
         end
 
         # Note: Orders would need to be fetched separately as they're not part of the Account data object
-        
+
         # Convert account back to hash for JSON display (redacted)
         account_hash = {
           securitiesAccount: {
