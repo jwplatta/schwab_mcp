@@ -90,3 +90,13 @@ When migrating tools from JSON parsing to data objects:
 - Ensure all tests pass before committing
 
 Follow these patterns to maintain consistency and quality across the codebase.
+
+## MCP::Tool::Response Test Access Note
+
+**Important:** When writing RSpec tests for tools that return an `MCP::Tool::Response`, use the `content` attribute (or `contents` if present) to access the response data. Do **not** use `outputs`—this attribute does not exist. See `get_price_history_tool_spec.rb` for a correct example:
+
+```ruby
+expect(response.content.first[:text]).to include("some expected text")
+```
+
+This pattern should be used for all tool response tests.

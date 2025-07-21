@@ -166,9 +166,14 @@ module SchwabMCP
 
           if transactions_response&.body
             log_info("Successfully retrieved transactions for #{account_name}")
-            transactions_data = JSON.parse(transactions_response.body)
+            # Use schwab_rb Transaction data objects
+            transactions = if transactions_response.body.is_a?(Array)
+              transactions_response.body.map { |t| SchwabRb::DataObjects::Transaction.build(t) }
+            else
+              [SchwabRb::DataObjects::Transaction.build(transactions_response.body)]
+            end
 
-            formatted_response = format_transactions_data(transactions_data, account_name, {
+            formatted_response = format_transactions_data(transactions, account_name, {
               start_date: start_date,
               end_date: end_date,
               transaction_types: transaction_types,
@@ -205,7 +210,7 @@ module SchwabMCP
 
       private
 
-      def self.format_transactions_data(transactions_data, account_name, filters)
+      def self.format_transactions_data(transactions, account_name, filters)
         friendly_name = account_name.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
 
         formatted = "**Transactions for #{friendly_name} (#{account_name}):**\n\n"
@@ -219,13 +224,11 @@ module SchwabMCP
           formatted += "\n"
         end
 
-        transactions = transactions_data.is_a?(Array) ? transactions_data : [transactions_data]
-
         formatted += "**Transactions Summary:**\n"
         formatted += "- Total Transactions: #{transactions.length}\n\n"
 
         if transactions.length > 0
-          transactions_by_type = transactions.group_by { |t| t['type'] }
+          transactions_by_type = transactions.group_by { |t| t.type }
           formatted += "**Transactions by Type:**\n"
           transactions_by_type.each do |type, type_transactions|
             formatted += "- #{type}: #{type_transactions.length} transactions\n"
@@ -241,7 +244,8 @@ module SchwabMCP
           formatted += "No transactions found matching the specified criteria.\n"
         end
 
-        redacted_data = Redactor.redact(transactions_data)
+        # Redact using to_h for data objects
+        redacted_data = Redactor.redact(transactions.map(&:to_h))
         formatted += "\n**Full Response (Redacted):**\n"
         formatted += "```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
@@ -249,41 +253,29 @@ module SchwabMCP
 
       def self.format_single_transaction(transaction, transaction_num)
         formatted = "**Transaction #{transaction_num}:**\n"
-        formatted += "- Activity ID: #{transaction['activityId']}\n" if transaction['activityId']
-        formatted += "- Type: #{transaction['type']}\n" if transaction['type']
-        formatted += "- Status: #{transaction['status']}\n" if transaction['status']
-        formatted += "- Trade Date: #{transaction['tradeDate']}\n" if transaction['tradeDate']
-        formatted += "- Settlement Date: #{transaction['settlementDate']}\n" if transaction['settlementDate']
-        formatted += "- Net Amount: $#{format_currency(transaction['netAmount'])}\n" if transaction['netAmount']
-        formatted += "- Sub Account: #{transaction['subAccount']}\n" if transaction['subAccount']
-        formatted += "- Order ID: #{transaction['orderId']}\n" if transaction['orderId']
-        formatted += "- Position ID: #{transaction['positionId']}\n" if transaction['positionId']
+        formatted += "- Activity ID: #{transaction.activity_id}\n" if transaction.activity_id
+        formatted += "- Type: #{transaction.type}\n" if transaction.type
+        formatted += "- Status: #{transaction.status}\n" if transaction.status
+        formatted += "- Trade Date: #{transaction.trade_date}\n" if transaction.trade_date
+        formatted += "- Net Amount: $#{format_currency(transaction.net_amount)}\n" if transaction.net_amount
+        formatted += "- Sub Account: #{transaction.sub_account}\n" if transaction.sub_account
+        formatted += "- Order ID: #{transaction.order_id}\n" if transaction.order_id
+        formatted += "- Position ID: #{transaction.position_id}\n" if transaction.position_id
 
-        if transaction['transferItems'] && transaction['transferItems'].any?
+        if transaction.transfer_items && transaction.transfer_items.any?
           formatted += "- Transfer Items:\n"
-          transaction['transferItems'].each_with_index do |item, i|
+          transaction.transfer_items.each_with_index do |item, i|
             formatted += "  * Item #{i + 1}:\n"
-            formatted += "    - Amount: $#{format_currency(item['amount'])}\n" if item['amount']
-            formatted += "    - Cost: $#{format_currency(item['cost'])}\n" if item['cost']
-            formatted += "    - Price: $#{format_currency(item['price'])}\n" if item['price']
-            formatted += "    - Fee Type: #{item['feeType']}\n" if item['feeType']
-            formatted += "    - Position Effect: #{item['positionEffect']}\n" if item['positionEffect']
+            formatted += "    - Amount: $#{format_currency(item.amount)}\n" if item.amount
+            formatted += "    - Cost: $#{format_currency(item.cost)}\n" if item.cost
+            formatted += "    - Fee Type: #{item.fee_type}\n" if item.fee_type
+            formatted += "    - Position Effect: #{item.position_effect}\n" if item.position_effect
 
-            if item['instrument']
-              instrument = item['instrument']
+            if item.instrument
               formatted += "    - Instrument:\n"
-              formatted += "      * Symbol: #{instrument['symbol']}\n" if instrument['symbol']
-              formatted += "      * Asset Type: #{instrument['assetType']}\n" if instrument['assetType']
-              formatted += "      * Description: #{instrument['description']}\n" if instrument['description']
-              formatted += "      * Closing Price: $#{format_currency(instrument['closingPrice'])}\n" if instrument['closingPrice']
-
-              # Options-specific fields
-              if instrument['assetType'] == 'OPTION'
-                formatted += "      * Strike Price: $#{format_currency(instrument['strikePrice'])}\n" if instrument['strikePrice']
-                formatted += "      * Put/Call: #{instrument['putCall']}\n" if instrument['putCall']
-                formatted += "      * Expiration Date: #{instrument['expirationDate']}\n" if instrument['expirationDate']
-                formatted += "      * Underlying Symbol: #{instrument['underlyingSymbol']}\n" if instrument['underlyingSymbol']
-              end
+              formatted += "      * Symbol: #{item.instrument.symbol}\n" if item.instrument.symbol
+              formatted += "      * Asset Type: #{item.instrument.respond_to?(:asset_type) ? item.instrument.asset_type : nil}\n" if item.instrument.respond_to?(:asset_type) && item.instrument.asset_type
+              formatted += "      * Description: #{item.instrument.description}\n" if item.instrument.description
             end
           end
         end
