@@ -3,6 +3,7 @@ require "schwab_rb"
 require "json"
 require_relative "../loggable"
 require_relative "../redactor"
+require_relative "../schwab_client_factory"
 
 module SchwabMCP
   module Tools
@@ -26,20 +27,8 @@ module SchwabMCP
         log_info("Listing all configured Schwab accounts")
 
         begin
-          client = SchwabRb::Auth.init_client_easy(
-            ENV['SCHWAB_API_KEY'],
-            ENV['SCHWAB_APP_SECRET'],
-            ENV['SCHWAB_CALLBACK_URI'],
-            ENV['TOKEN_PATH']
-          )
-
-          unless client
-            log_error("Failed to initialize Schwab client")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Failed to initialize Schwab client. Check your credentials."
-            }])
-          end
+          client = SchwabClientFactory.create_client
+          return SchwabClientFactory.client_error_response unless client
 
           log_debug("Fetching account numbers from Schwab API")
           account_numbers = client.get_account_numbers

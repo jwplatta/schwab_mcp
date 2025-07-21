@@ -4,6 +4,7 @@ require "json"
 require "date"
 require_relative "../loggable"
 require_relative "../redactor"
+require_relative "../schwab_client_factory"
 
 module SchwabMCP
   module Tools
@@ -83,20 +84,8 @@ module SchwabMCP
         end
 
         begin
-          client = SchwabRb::Auth.init_client_easy(
-            ENV['SCHWAB_API_KEY'],
-            ENV['SCHWAB_APP_SECRET'],
-            ENV['SCHWAB_CALLBACK_URI'],
-            ENV['TOKEN_PATH']
-          )
-
-          unless client
-            log_error("Failed to initialize Schwab client")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Failed to initialize Schwab client. Check your credentials."
-            }])
-          end
+          client = SchwabClientFactory.create_client
+          return SchwabClientFactory.client_error_response unless client
 
           account_id = ENV[account_name]
           unless account_id
