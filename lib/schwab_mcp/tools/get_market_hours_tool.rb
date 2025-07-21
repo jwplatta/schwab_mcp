@@ -1,6 +1,7 @@
+# frozen_string_literal: true
+
 require "mcp"
 require "schwab_rb"
-require "json"
 require "date"
 require_relative "../loggable"
 require_relative "../schwab_client_factory"
@@ -61,22 +62,23 @@ module SchwabMCP
           end
 
           log_debug("Making API request for markets: #{markets.join(', ')}")
-          response = client.get_market_hours(markets, date: parsed_date)
+          market_hours_obj = client.get_market_hours(markets, date: parsed_date, return_data_objects: true)
 
-          if response&.body
-            log_info("Successfully retrieved market hours for #{markets.join(', ')}")
-            date_info = date ? " for #{date}" : " for today"
-            MCP::Tool::Response.new([{
+          unless market_hours_obj
+            log_warn("No market hours data object returned for markets: #{markets.join(', ')}")
+            return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Market Hours#{date_info}:**\n\n```json\n#{response.body}\n```"
-            }])
-          else
-            log_warn("Empty response from Schwab API for markets: #{markets.join(', ')}")
-            MCP::Tool::Response.new([{
-              type: "text",
-              text: "**No Data**: Empty response from Schwab API for markets: #{markets.join(', ')}"
+              text: "**No Data**: No market hours data returned for markets: #{markets.join(', ')}"
             }])
           end
+
+          formatted = format_market_hours_object(market_hours_obj)
+          log_info("Successfully retrieved market hours for #{markets.join(', ')}")
+          date_info = date ? " for #{date}" : " for today"
+          MCP::Tool::Response.new([{
+            type: "text",
+            text: "**Market Hours#{date_info}:**\n\n#{formatted}"
+          }])
 
         rescue => e
           log_error("Error retrieving market hours for #{markets.join(', ')}: #{e.message}")
@@ -85,6 +87,15 @@ module SchwabMCP
             type: "text",
             text: "**Error** retrieving market hours for #{markets.join(', ')}: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
           }])
+        end
+      end
+
+      # Format the market hours object for display
+      def self.format_market_hours_object(obj)
+        if obj.respond_to?(:to_h)
+          obj.to_h.inspect
+        else
+          obj.inspect
         end
       end
     end
