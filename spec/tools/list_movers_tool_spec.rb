@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
+
 require 'spec_helper'
+require 'schwab_mcp/schwab_client_factory'
 
 RSpec.describe SchwabMCP::Tools::ListMoversTool do
   let(:server_context) { double('server_context') }
   let(:client) { double('SchwabRb::Client') }
 
   before do
-    allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(client)
+    allow(SchwabMCP::SchwabClientFactory).to receive(:create_client).and_return(client)
   end
 
   context 'when movers data is returned' do
@@ -75,7 +77,7 @@ RSpec.describe SchwabMCP::Tools::ListMoversTool do
         server_context: server_context
       )
 
-      expect(resp.content.first[:text]).to include('Market Movers for $SPX (sorted by PERCENT_CHANGE_UP) (frequency filter: 5)')
+      expect(resp.content.first[:text]).to include('**Market Movers for $SPX** (sorted by PERCENT_CHANGE_UP) (frequency filter: 5)')
     end
   end
 
@@ -105,7 +107,7 @@ RSpec.describe SchwabMCP::Tools::ListMoversTool do
 
   context 'when Schwab client fails to initialize' do
     before do
-      allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(nil)
+      allow(SchwabMCP::SchwabClientFactory).to receive(:create_client).and_return(nil)
     end
 
     it 'returns an error message' do

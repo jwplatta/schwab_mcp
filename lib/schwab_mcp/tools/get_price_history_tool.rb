@@ -1,6 +1,5 @@
 require "mcp"
 require "schwab_rb"
-require "json"
 require "date"
 require_relative "../loggable"
 require_relative "../schwab_client_factory"
@@ -135,7 +134,7 @@ module SchwabMCP
 
           log_debug("Making price history API request for symbol: #{symbol}")
 
-          response = client.get_price_history(
+          price_history = client.get_price_history(
             symbol.upcase,
             period_type: period_type_enum,
             period: period,
@@ -147,29 +146,29 @@ module SchwabMCP
             need_previous_close: need_previous_close
           )
 
-          if response&.body
+          if price_history
             log_info("Successfully retrieved price history for #{symbol}")
 
-            begin
-              data = JSON.parse(response.body)
-              candles = data.dig("candles") || []
-
-              summary = if candles.any?
-                "Retrieved #{candles.length} price candles"
-              else
-                "No price data available for the specified parameters"
-              end
-
-              MCP::Tool::Response.new([{
-                type: "text",
-                text: "**Price History for #{symbol.upcase}:**\n\n#{summary}\n\n```json\n#{response.body}\n```"
-              }])
-            rescue JSON::ParserError
-              MCP::Tool::Response.new([{
-                type: "text",
-                text: "**Price History for #{symbol.upcase}:**\n\n```json\n#{response.body}\n```"
-              }])
+            summary = if price_history.empty?
+              "No price data available for the specified parameters"
+            else
+              "Retrieved #{price_history.count} price candles\n" \
+              "First candle: #{price_history.first_candle&.to_h}\n" \
+              "Last candle: #{price_history.last_candle&.to_h}"
             end
+
+            # Show a compact JSON representation for advanced users
+            json_preview = begin
+              require "json"
+              JSON.pretty_generate(price_history.to_h)
+            rescue
+              price_history.to_h.inspect
+            end
+
+            MCP::Tool::Response.new([{
+              type: "text",
+              text: "**Price History for #{symbol.upcase}:**\n\n#{summary}\n\n```json\n#{json_preview}\n```"
+            }])
           else
             log_warn("Empty response from Schwab API for symbol: #{symbol}")
             MCP::Tool::Response.new([{

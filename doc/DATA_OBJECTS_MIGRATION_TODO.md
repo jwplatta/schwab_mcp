@@ -27,8 +27,8 @@ July 21, 2025
 - [x] **quotes_tool.rb** - ✅ COMPLETED - Updated to use EquityQuote, OptionQuote, and IndexQuote data objects
 - [x] **option_chain_tool.rb** - Update to use OptionChain data object
 - [x] **list_movers_tool.rb** - ✅ COMPLETED - Updated to use MarketMovers data object
-- [ ] **get_market_hours_tool.rb** - Update to use MarketHours data object
-- [ ] **get_price_history_tool.rb** - Update to use PriceHistory data object
+- [x] **get_market_hours_tool.rb** - Update to use MarketHours data object
+- [x] **get_price_history_tool.rb** - Update to use PriceHistory data object
 
 ### ✅ Transaction Tools
 - [ ] **list_account_transactions_tool.rb** - Update to use Transaction data objects
