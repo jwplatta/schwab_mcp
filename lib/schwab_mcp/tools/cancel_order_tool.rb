@@ -80,9 +80,9 @@ module SchwabMCP
           log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
           log_debug("Fetching account numbers mapping")
 
-          account_numbers_response = client.get_account_numbers
 
-          unless account_numbers_response&.body
+          account_numbers = client.get_account_numbers # returns SchwabRb::DataObjects::AccountNumbers
+          unless account_numbers && account_numbers.respond_to?(:accounts)
             log_error("Failed to retrieve account numbers")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -90,13 +90,10 @@ module SchwabMCP
             }])
           end
 
-          account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
-          log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
-
           account_hash = nil
-          account_mappings.each do |mapping|
-            if mapping[:accountNumber] == account_id
-              account_hash = mapping[:hashValue]
+          account_numbers.accounts.each do |acct|
+            if acct.account_number.to_s == account_id.to_s
+              account_hash = acct.hash_value
               break
             end
           end
@@ -105,16 +102,16 @@ module SchwabMCP
             log_error("Account ID not found in available accounts")
             return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+              text: "**Error**: Account ID not found in available accounts. #{account_numbers.accounts.length} accounts available."
             }])
           end
 
           log_debug("Found account hash for account ID: #{account_name}")
           log_debug("Verifying order exists before attempting cancellation")
 
-          order_response = client.get_order(order_id, account_hash)
 
-          unless order_response&.body
+          order = client.get_order(order_id, account_hash) # returns SchwabRb::DataObjects::Order
+          unless order
             log_warn("Order not found or empty response for order ID: #{order_id}")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -122,9 +119,8 @@ module SchwabMCP
             }])
           end
 
-          order_data = JSON.parse(order_response.body)
-          order_status = order_data['status']
-          cancelable = order_data['cancelable']
+          order_status = order.status
+          cancelable = order.respond_to?(:cancelable) ? order.cancelable : true # fallback if attribute not present
 
           log_debug("Order found - Status: #{order_status}, Cancelable: #{cancelable}")
           if cancelable == false
@@ -140,7 +136,7 @@ module SchwabMCP
 
           if cancel_response.respond_to?(:status) && cancel_response.status == 200
             log_info("Successfully cancelled order ID: #{order_id}")
-            formatted_response = format_cancellation_success(order_id, account_name, order_data)
+            formatted_response = format_cancellation_success(order_id, account_name, order)
           elsif cancel_response.respond_to?(:status) && cancel_response.status == 404
             log_warn("Order not found during cancellation: #{order_id}")
             return MCP::Tool::Response.new([{
@@ -149,7 +145,7 @@ module SchwabMCP
             }])
           else
             log_info("Order cancellation request submitted for order ID: #{order_id}")
-            formatted_response = format_cancellation_success(order_id, account_name, order_data)
+            formatted_response = format_cancellation_success(order_id, account_name, order)
           end
 
           MCP::Tool::Response.new([{
@@ -157,12 +153,7 @@ module SchwabMCP
             text: formatted_response
           }])
 
-        rescue JSON::ParserError => e
-          log_error("JSON parsing error: #{e.message}")
-          MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error**: Failed to parse API response: #{e.message}"
-          }])
+        # No JSON::ParserError rescue needed with data objects
         rescue => e
           log_error("Error cancelling order ID #{order_id}: #{e.message}")
           log_debug("Backtrace: #{e.backtrace.first(3).join('\n')}")
@@ -186,27 +177,26 @@ module SchwabMCP
 
       private
 
-      def self.format_cancellation_success(order_id, account_name, order_data)
+      def self.format_cancellation_success(order_id, account_name, order)
         friendly_name = account_name.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
 
         formatted = "**✅ Order Cancellation Successful**\n\n"
         formatted += "**Order ID**: #{order_id}\n"
         formatted += "**Account**: #{friendly_name} (#{account_name})\n\n"
         formatted += "**Order Details:**\n"
-        formatted += "- Original Status: #{order_data['status']}\n" if order_data['status']
-        formatted += "- Order Type: #{order_data['orderType']}\n" if order_data['orderType']
-        formatted += "- Session: #{order_data['session']}\n" if order_data['session']
-        formatted += "- Duration: #{order_data['duration']}\n" if order_data['duration']
-        formatted += "- Quantity: #{order_data['quantity']}\n" if order_data['quantity']
-        formatted += "- Price: $#{format_currency(order_data['price'])}\n" if order_data['price']
+        formatted += "- Original Status: #{order.status}\n" if order.status
+        formatted += "- Order Type: #{order.order_type}\n" if order.order_type
+        formatted += "- Duration: #{order.duration}\n" if order.duration
+        formatted += "- Quantity: #{order.quantity}\n" if order.quantity
+        formatted += "- Price: $#{format_currency(order.price)}\n" if order.price
 
-        if order_data['orderLegCollection'] && order_data['orderLegCollection'].any?
+        if order.order_leg_collection && order.order_leg_collection.any?
           formatted += "\n**Instruments:**\n"
-          order_data['orderLegCollection'].each do |leg|
-            if leg['instrument']
-              symbol = leg['instrument']['symbol']
-              instruction = leg['instruction']
-              quantity = leg['quantity']
+          order.order_leg_collection.each do |leg|
+            if leg.instrument
+              symbol = leg.instrument.symbol
+              instruction = leg.instruction
+              quantity = leg.quantity
               formatted += "- #{symbol}: #{instruction} #{quantity}\n"
             end
           end
