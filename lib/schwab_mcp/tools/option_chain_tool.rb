@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 require "mcp"
 require "schwab_rb"
-require "json"
 require "date"
 require_relative "../loggable"
 require_relative "../option_chain_filter"
+require_relative "../schwab_client_factory"
 
 module SchwabMCP
   module Tools
@@ -21,7 +23,7 @@ module SchwabMCP
           contract_type: {
             type: "string",
             description: "Type of contracts to return in the chain",
-            enum: ["CALL", "PUT", "ALL"]
+            enum: %w[CALL PUT ALL]
           },
           strike_count: {
             type: "integer",
@@ -35,22 +37,23 @@ module SchwabMCP
           strategy: {
             type: "string",
             description: "Strategy type for the option chain",
-            enum: ["SINGLE", "ANALYTICAL", "COVERED", "VERTICAL", "CALENDAR", "STRANGLE", "STRADDLE", "BUTTERFLY", "CONDOR", "DIAGONAL", "COLLAR", "ROLL"]
+            enum: %w[SINGLE ANALYTICAL COVERED VERTICAL CALENDAR STRANGLE STRADDLE BUTTERFLY
+                     CONDOR DIAGONAL COLLAR ROLL]
           },
           strike_range: {
             type: "string",
             description: "Range of strikes to include",
-            enum: ["ITM", "NTM", "OTM", "SAK", "SBK", "SNK", "ALL"]
+            enum: %w[ITM NTM OTM SAK SBK SNK ALL]
           },
           option_type: {
             type: "string",
             description: "Type of options to include in the chain",
-            enum: ["S", "NS", "ALL"]
+            enum: %w[S NS ALL]
           },
           exp_month: {
             type: "string",
             description: "Filter options by expiration month",
-            enum: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", "ALL"]
+            enum: %w[JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC ALL]
           },
           interval: {
             type: "number",
@@ -87,7 +90,7 @@ module SchwabMCP
           entitlement: {
             type: "string",
             description: "Client entitlement",
-            enum: ["PP", "NP", "PN"]
+            enum: %w[PP NP PN]
           },
           max_delta: {
             type: "number",
@@ -124,29 +127,17 @@ module SchwabMCP
         idempotent_hint: true
       )
 
-      def self.call(symbol:, contract_type: nil, strike_count: nil, include_underlying_quote: nil,
+      def self.call(symbol:, server_context:, contract_type: nil, strike_count: nil, include_underlying_quote: nil,
                     strategy: nil, strike_range: nil, option_type: nil, exp_month: nil,
                     interval: nil, strike: nil, from_date: nil, to_date: nil, volatility: nil,
                     underlying_price: nil, interest_rate: nil, days_to_expiration: nil,
                     entitlement: nil, max_delta: nil, min_delta: nil, max_strike: nil,
-                    min_strike: nil, expiration_date: nil, server_context:)
+                    min_strike: nil, expiration_date: nil)
         log_info("Getting option chain for symbol: #{symbol}")
 
         begin
-          client = SchwabRb::Auth.init_client_easy(
-            ENV['SCHWAB_API_KEY'],
-            ENV['SCHWAB_APP_SECRET'],
-            ENV['SCHWAB_CALLBACK_URI'],
-            ENV['TOKEN_PATH']
-          )
-
-          unless client
-            log_error("Failed to initialize Schwab client")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Failed to initialize Schwab client. Check your credentials."
-            }])
-          end
+          client = SchwabClientFactory.create_client
+          return SchwabClientFactory.client_error_response unless client
 
           params = {}
           params[:contract_type] = contract_type if contract_type
@@ -175,15 +166,13 @@ module SchwabMCP
           params[:entitlement] = entitlement if entitlement
 
           log_debug("Making API request for option chain with params: #{params}")
-          response = client.get_option_chain(symbol.upcase, **params)
+          option_chain = client.get_option_chain(symbol.upcase, return_data_objects: true, **params)
 
-          if response&.body
+          if option_chain
             log_info("Successfully retrieved option chain for #{symbol}")
 
             if max_delta || min_delta || max_strike || min_strike
               begin
-                parsed_response = JSON.parse(response.body, symbolize_names: true)
-
                 log_debug("Applying option chain filtering")
 
                 filter = SchwabMCP::OptionChainFilter.new(
@@ -194,10 +183,16 @@ module SchwabMCP
                   min_strike: min_strike
                 )
 
-                filtered_response = parsed_response.dup
+                # Convert option chain to hash format for filtering compatibility
+                chain_hash = {
+                  callExpDateMap: option_chain.call_exp_date_map || {},
+                  putExpDateMap: option_chain.put_exp_date_map || {}
+                }
 
-                if parsed_response[:callExpDateMap]
-                  filtered_calls = filter.select(parsed_response[:callExpDateMap])
+                filtered_response = chain_hash.dup
+
+                if chain_hash[:callExpDateMap]
+                  filtered_calls = filter.select(chain_hash[:callExpDateMap])
                   log_debug("Filtered #{filtered_calls.size} call options")
 
                   filtered_response[:callExpDateMap] = reconstruct_exp_date_map(
@@ -205,62 +200,67 @@ module SchwabMCP
                   )
                 end
 
-                if parsed_response[:putExpDateMap]
-                  filtered_puts = filter.select(parsed_response[:putExpDateMap])
+                if chain_hash[:putExpDateMap]
+                  filtered_puts = filter.select(chain_hash[:putExpDateMap])
                   log_debug("Filtered #{filtered_puts.size} put options")
 
                   filtered_response[:putExpDateMap] = reconstruct_exp_date_map(
-                    filtered_puts, expiration_date)
+                    filtered_puts, expiration_date
+                  )
                 end
 
-                File.open("filtered_option_chain_#{symbol}_#{expiration_date}.json", "w") do |f|
-                  f.write(JSON.pretty_generate(filtered_response))
-                end
-
-                return MCP::Tool::Response.new([{
-                  type: "text",
-                  text: "#{JSON.pretty_generate(filtered_response)}\n"
-                }])
-              rescue JSON::ParserError => e
-                log_error("Failed to parse response for filtering: #{e.message}")
-              rescue => e
+                MCP::Tool::Response.new([{
+                                          type: "text",
+                                          text: format_option_chain_response(filtered_response)
+                                        }])
+              rescue StandardError => e
                 log_error("Error applying option chain filter: #{e.message}")
               end
             else
               log_debug("No filtering applied, returning full response")
-              return MCP::Tool::Response.new([{
-                type: "text",
-                text: "#{JSON.pretty_generate(response.body)}\n"
-              }])
+              MCP::Tool::Response.new([{
+                                        type: "text",
+                                        text: format_option_chain_response(option_chain)
+                                      }])
             end
           else
             log_warn("Empty response from Schwab API for option chain: #{symbol}")
             MCP::Tool::Response.new([{
-              type: "text",
-              text: "**No Data**: Empty response from Schwab API for option chain: #{symbol}"
-            }])
+                                      type: "text",
+                                      text: "**No Data**: Empty response from Schwab API for option chain: #{symbol}"
+                                    }])
           end
-
-        rescue => e
+        rescue StandardError => e
           log_error("Error retrieving option chain for #{symbol}: #{e.message}")
           log_debug("Backtrace: #{e.backtrace.first(3).join('\n')}")
+          error_text = "**Error** retrieving option chain for #{symbol}: #{e.message}\n\n"
+          error_text += e.backtrace.first(3).join('\n')
           MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error** retrieving option chain for #{symbol}: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
-          }])
+                                    type: "text",
+                                    text: error_text
+                                  }])
         end
       end
 
-      private
+      private_class_method def self.format_option_chain_response(data)
+        return data.to_s if data.is_a?(Hash)
 
-      def self.reconstruct_exp_date_map(filtered_options, target_expiration_date)
+        # For OptionChain data object, convert to readable format
+        output = []
+        output << "Symbol: #{data.symbol}" if data.respond_to?(:symbol)
+        output << "Status: #{data.status}" if data.respond_to?(:status)
+
+        output.join("\n")
+      end
+
+      private_class_method def self.reconstruct_exp_date_map(filtered_options, target_expiration_date)
         return {} if filtered_options.empty?
 
         grouped = {}
 
         filtered_options.each do |option|
           exp_date_key = "#{target_expiration_date}:#{option[:daysToExpiration] || 0}"
-          strike_key = "#{option[:strikePrice]}"
+          strike_key = option[:strikePrice].to_s
 
           grouped[exp_date_key] ||= {}
           grouped[exp_date_key][strike_key] ||= []
