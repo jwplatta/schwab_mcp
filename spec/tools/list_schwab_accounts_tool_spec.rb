@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require "rspec"
-require "mcp"
-require_relative "../../lib/schwab_mcp/tools/list_schwab_accounts_tool"
+require "spec_helper"
 
 RSpec.describe SchwabMCP::Tools::ListSchwabAccountsTool do
   describe ".call" do

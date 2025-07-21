@@ -9,8 +9,8 @@ July 21, 2025
 ## Tools to Update
 
 ### ✅ Account-related Tools
-- [ ] **schwab_account_details_tool.rb** - Update to use Account data object
-- [ ] **list_schwab_accounts_tool.rb** - Update to use AccountNumbers data object
+- [x] **schwab_account_details_tool.rb** - ✅ COMPLETED - Updated to use Account and AccountNumbers data objects
+- [x] **list_schwab_accounts_tool.rb** - ✅ COMPLETED - Updated to use AccountNumbers data object
 
 ### ✅ Order-related Tools  
 - [ ] **list_account_orders_tool.rb** - Update to use Order data objects
@@ -74,5 +74,5 @@ Based on the schwab_rb data objects available:
 ## Progress Tracking
 
 - **Total tools to update**: 16 (excluding help_tool.rb)
-- **Tools completed**: 0
-- **Tools remaining**: 16
+- **Tools completed**: 1
+- **Tools remaining**: 15

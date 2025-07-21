@@ -75,9 +75,9 @@ module SchwabMCP
           log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
           log_debug("Fetching account numbers mapping")
 
-          account_numbers_response = client.get_account_numbers
+          account_numbers = client.get_account_numbers
 
-          unless account_numbers_response&.body
+          unless account_numbers
             log_error("Failed to retrieve account numbers")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -85,36 +85,27 @@ module SchwabMCP
             }])
           end
 
-          account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
-          log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
+          log_debug("Account numbers retrieved (#{account_numbers.size} accounts found)")
 
-          account_hash = nil
-          account_mappings.each do |mapping|
-            if mapping[:accountNumber] == account_id
-              account_hash = mapping[:hashValue]
-              break
-            end
-          end
+          account_hash = account_numbers.find_hash_value(account_id)
 
           unless account_hash
             log_error("Account ID not found in available accounts")
-            available_accounts = account_mappings.map { |m| "[REDACTED]" }.join(", ")
             return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+              text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
             }])
           end
 
           log_debug("Found account hash for account ID: #{account_name}")
 
           log_debug("Fetching account information with fields: #{fields}")
-          account_response = client.get_account(account_hash, fields: fields)
+          account = client.get_account(account_hash, fields: fields)
 
-          if account_response&.body
+          if account
             log_info("Successfully retrieved account information for #{account_name}")
-            account_data = JSON.parse(account_response.body)
 
-            formatted_response = format_account_data(account_data, account_name, account_id)
+            formatted_response = format_account_data(account, account_name, account_id)
 
             MCP::Tool::Response.new([{
               type: "text",
@@ -146,54 +137,58 @@ module SchwabMCP
 
       private
 
-      def self.format_account_data(account_data, account_name, account_id)
-        account = account_data["securitiesAccount"]
+      def self.format_account_data(account, account_name, account_id)
         friendly_name = account_name.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
 
         formatted = "**Account Information for #{friendly_name} (#{account_name}):**\n\n"
 
-        if account
-          formatted += "**Account Number:** #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
-          formatted += "**Account Type:** #{account['type']}\n"
+        formatted += "**Account Number:** #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
+        formatted += "**Account Type:** #{account.type}\n"
 
-          if current_balances = account['currentBalances']
-            formatted += "\n**Current Balances:**\n"
-            formatted += "- Cash Balance: $#{format_currency(current_balances['cashBalance'])}\n"
-            formatted += "- Buying Power: $#{format_currency(current_balances['buyingPower'])}\n"
-            formatted += "- Total Cash: $#{format_currency(current_balances['totalCash'])}\n"
-            formatted += "- Liquidation Value: $#{format_currency(current_balances['liquidationValue'])}\n"
-            formatted += "- Long Market Value: $#{format_currency(current_balances['longMarketValue'])}\n"
-            formatted += "- Short Market Value: $#{format_currency(current_balances['shortMarketValue'])}\n"
-          end
+        if current_balances = account.current_balances
+          formatted += "\n**Current Balances:**\n"
+          formatted += "- Cash Balance: $#{format_currency(current_balances.cash_balance)}\n"
+          formatted += "- Buying Power: $#{format_currency(current_balances.buying_power)}\n"
+          formatted += "- Liquidation Value: $#{format_currency(current_balances.liquidation_value)}\n"
+          formatted += "- Long Market Value: $#{format_currency(current_balances.long_market_value)}\n"
+          formatted += "- Short Market Value: $#{format_currency(current_balances.short_market_value)}\n"
+        end
 
-          # Positions summary
-          if positions = account['positions']
-            formatted += "\n**Positions Summary:**\n"
-            formatted += "- Total Positions: #{positions.length}\n"
+        # Positions summary
+        if positions = account.positions
+          formatted += "\n**Positions Summary:**\n"
+          formatted += "- Total Positions: #{positions.length}\n"
 
-            if positions.length > 0
-              formatted += "\n**Position Details:**\n"
-              positions.each do |position|
-                symbol = position.dig('instrument', 'symbol')
-                qty = position['longQuantity'].to_f - position['shortQuantity'].to_f
-                market_value = position['marketValue']
-                formatted += "- #{symbol}: #{qty} shares, Market Value: $#{format_currency(market_value)}\n"
-              end
+          if positions.length > 0
+            formatted += "\n**Position Details:**\n"
+            positions.each do |position|
+              symbol = position.instrument.symbol
+              qty = position.long_quantity - position.short_quantity
+              market_value = position.market_value
+              formatted += "- #{symbol}: #{qty} shares, Market Value: $#{format_currency(market_value)}\n"
             end
           end
+        end
 
-          if orders = account['orderStrategies']
-            formatted += "\n**Active Orders:**\n"
-            formatted += "- Total Orders: #{orders.length}\n"
+        # Note: Orders would need to be fetched separately as they're not part of the Account data object
+        
+        # Convert account back to hash for JSON display (redacted)
+        account_hash = {
+          securitiesAccount: {
+            type: account.type,
+            accountNumber: account.account_number,
+            positions: account.positions.map(&:to_h),
+            currentBalances: {
+              cashBalance: account.current_balances&.cash_balance,
+              buyingPower: account.current_balances&.buying_power,
+              liquidationValue: account.current_balances&.liquidation_value,
+              longMarketValue: account.current_balances&.long_market_value,
+              shortMarketValue: account.current_balances&.short_market_value
+            }
+          }
+        }
 
-            orders.each do |order|
-              status = order['status']
-              symbol = order.dig('orderLegCollection', 0, 'instrument', 'symbol')
-              formatted += "- #{symbol}: #{status}\n"
-            end
-          end        end
-
-        redacted_data = Redactor.redact(account_data)
+        redacted_data = Redactor.redact(account_hash)
         formatted += "\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
         formatted
       end
