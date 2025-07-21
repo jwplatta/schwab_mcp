@@ -6,7 +6,7 @@ Update all tools in `lib/schwab_mcp/tools/` to use data objects from schwab_rb i
 ## Migration Date
 July 21, 2025
 
-**Progress: 7/17 tools completed**
+**Progress: 8/17 tools completed**
 
 ## Tools to Update
 
@@ -20,7 +20,7 @@ July 21, 2025
 - [x] **cancel_order_tool.rb** - ✅ COMPLETED - Updated to use Order data object
 - [x] **preview_order_tool.rb** - ✅ COMPLETED - Updated to use OrderPreview data object
 - [x] **place_order_tool.rb** - ✅ COMPLETED - Updated to use AccountNumbers data object for account resolution
-- [ ] **replace_order_tool.rb** - Update to use Order data object (if applicable)
+- [x] **replace_order_tool.rb** - ✅ COMPLETED - Updated to use AccountNumbers data object for account resolution
 
 ### ✅ Market Data Tools
 - [ ] **quote_tool.rb** - Update to use Quote data object
