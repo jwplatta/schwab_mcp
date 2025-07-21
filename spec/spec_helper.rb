@@ -23,6 +23,6 @@ RSpec.configure do |config|
     allow(ENV).to receive(:[]).with("LOGFILE").and_return(nil)
     allow(ENV).to receive(:[]).with("LOG_LEVEL").and_return("INFO")
     allow(ENV).to receive(:[]).with("TMPDIR").and_return("/tmp")
-    allow(ENV).to receive(:[]).with("TRADING_BROKERAGE_ACCOUNT").and_return("123456789")
+    allow(ENV).to receive(:[]).with("TRADING_BROKERAGE_ACCOUNT").and_return("12345678")
   end
 end
