@@ -6,7 +6,7 @@ Update all tools in `lib/schwab_mcp/tools/` to use data objects from schwab_rb i
 ## Migration Date
 July 21, 2025
 
-**Progress: 10/17 tools completed**
+**Progress: 11/17 tools completed**
 
 ## Tools to Update
 
@@ -25,8 +25,8 @@ July 21, 2025
 ### ✅ Market Data Tools
 - [x] **quote_tool.rb** - ✅ COMPLETED - Updated to use EquityQuote, OptionQuote, and IndexQuote data objects
 - [x] **quotes_tool.rb** - ✅ COMPLETED - Updated to use EquityQuote, OptionQuote, and IndexQuote data objects
-- [ ] **option_chain_tool.rb** - Update to use OptionChain data object
-- [ ] **list_movers_tool.rb** - Update to use appropriate data object (if available)
+- [x] **option_chain_tool.rb** - Update to use OptionChain data object
+- [x] **list_movers_tool.rb** - ✅ COMPLETED - Updated to use MarketMovers data object
 - [ ] **get_market_hours_tool.rb** - Update to use MarketHours data object
 - [ ] **get_price_history_tool.rb** - Update to use PriceHistory data object
 
@@ -76,5 +76,5 @@ Based on the schwab_rb data objects available:
 ## Progress Tracking
 
 - **Total tools to update**: 16 (excluding help_tool.rb)
-- **Tools completed**: 9
-- **Tools remaining**: 7
+- **Tools completed**: 10
+- **Tools remaining**: 6

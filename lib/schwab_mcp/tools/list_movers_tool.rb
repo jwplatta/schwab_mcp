@@ -1,6 +1,5 @@
 require "mcp"
 require "schwab_rb"
-require "json"
 require_relative "../loggable"
 require_relative "../schwab_client_factory"
 
@@ -47,27 +46,26 @@ module SchwabMCP
 
           log_debug("Making API request for movers - index: #{index}, sort_order: #{sort_order}, frequency: #{frequency}")
 
-          response = client.get_movers(
+          market_movers = client.get_movers(
             index,
             sort_order: sort_order,
             frequency: frequency
           )
 
-          if response&.body
-            log_info("Successfully retrieved movers for index #{index}")
-            parsed_body = JSON.parse(response.body)
+          if market_movers && market_movers.count > 0
+            log_info("Successfully retrieved #{market_movers.count} movers for index #{index}")
 
-            formatted_output = format_movers_response(parsed_body, index, sort_order, frequency)
+            formatted_output = format_movers_response(market_movers, index, sort_order, frequency)
 
             MCP::Tool::Response.new([{
               type: "text",
               text: formatted_output
             }])
           else
-            log_warn("Empty response from Schwab API for movers")
+            log_warn("No movers data returned from Schwab API for index #{index}")
             MCP::Tool::Response.new([{
               type: "text",
-              text: "**No Data**: Empty response from Schwab API for movers"
+              text: "**No Data**: No movers found for index #{index}"
             }])
           end
 
@@ -83,30 +81,30 @@ module SchwabMCP
 
       private
 
-      def self.format_movers_response(data, index, sort_order, frequency)
+      def self.format_movers_response(market_movers, index, sort_order, frequency)
         header = "**Market Movers for #{index}**"
         header += " (sorted by #{sort_order})" if sort_order
         header += " (frequency filter: #{frequency})" if frequency
         header += "\n\n"
 
-        if data.is_a?(Array) && data.any?
-          movers_list = data.map.with_index(1) do |mover, i|
-            symbol = mover['symbol'] || 'N/A'
-            description = mover['description'] || 'N/A'
-            change = mover['change'] || 0
-            percent_change = mover['percentChange'] || 0
-            volume = mover['totalVolume'] || 0
-            last_price = mover['last'] || 0
+        if market_movers.count > 0
+          movers_list = market_movers.movers.map.with_index(1) do |mover, i|
+            symbol = mover.symbol || 'N/A'
+            description = mover.description || 'N/A'
+            change = mover.net_change || 0
+            percent_change = mover.net_change_percentage || 0
+            volume = mover.volume || 0
+            last_price = mover.last_price || 0
 
             "#{i}. **#{symbol}** - #{description}\n" \
-            "   Last: $#{last_price}\n" \
-            "   Change: #{change >= 0 ? '+' : ''}#{change} (#{percent_change >= 0 ? '+' : ''}#{percent_change}%)\n" \
+            "   Last: $#{sprintf('%.2f', last_price)}\n" \
+            "   Change: #{change >= 0 ? '+' : ''}#{sprintf('%.2f', change)} (#{percent_change >= 0 ? '+' : ''}#{sprintf('%.2f', percent_change)}%)\n" \
             "   Volume: #{volume.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse}"
           end.join("\n\n")
 
           "#{header}#{movers_list}"
         else
-          "#{header}No movers data available.\n\n**Raw Response:**\n```json\n#{JSON.pretty_generate(data)}\n```"
+          "#{header}No movers data available."
         end
       end
     end
