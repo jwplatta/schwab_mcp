@@ -125,11 +125,11 @@ module SchwabMCP
           )
 
           log_debug("Making preview order API request")
-          response = client.preview_order(account_hash, order_builder)
+          response = client.preview_order(account_hash, order_builder, return_data_objects: true)
 
-          if response&.body
+          if response
             log_info("Successfully previewed #{params[:strategy_type]} order")
-            formatted_response = format_preview_response(response.body, params)
+            formatted_response = format_preview_response(response, params)
             MCP::Tool::Response.new([{
               type: "text",
               text: formatted_response
@@ -168,37 +168,26 @@ module SchwabMCP
         log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
         log_debug("Fetching account numbers mapping")
 
-        account_numbers_response = client.get_account_numbers
-
-        unless account_numbers_response&.body
-          log_error("Failed to retrieve account numbers")
+        account_numbers = client.get_account_numbers(return_data_objects: true)
+        unless account_numbers && !account_numbers.empty?
+          log_error("Failed to retrieve account numbers or no accounts returned")
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Failed to retrieve account numbers from Schwab API"
+            text: "**Error**: Failed to retrieve account numbers from Schwab API or no accounts returned"
           }])
         end
 
-        account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
-        log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
-
-        account_hash = nil
-        account_mappings.each do |mapping|
-          if mapping[:accountNumber] == account_id
-            account_hash = mapping[:hashValue]
-            break
-          end
-        end
-
-        unless account_hash
+        mapping = account_numbers.find { |acct| acct.account_number == account_id }
+        unless mapping
           log_error("Account ID not found in available accounts")
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+            text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
           }])
         end
 
         log_debug("Found account hash for account name: #{account_name}")
-        [account_id, account_hash]
+        [account_id, mapping.hash_value]
       end
 
       def self.validate_strategy_params(params)
@@ -252,6 +241,50 @@ module SchwabMCP
           "#{strategy_summary}\n#{order_details}#{full_response}"
         rescue JSON::ParserError
           "**Order Preview Response:**\n\n```\n#{JSON.pretty_generate(redacted_data)}\n```"
+        end
+      end
+      def self.format_preview_response(order_preview, params)
+        # order_preview is a SchwabRb::DataObjects::OrderPreview
+        begin
+          strategy_summary = case params[:strategy_type]
+          when 'ironcondor'
+            "**Iron Condor Preview**\n" \
+            "- Put Short: #{params[:put_short_symbol]}\n" \
+            "- Put Long: #{params[:put_long_symbol]}\n" \
+            "- Call Short: #{params[:call_short_symbol]}\n" \
+            "- Call Long: #{params[:call_long_symbol]}\n"
+          when 'callspread', 'putspread'
+            "**#{params[:strategy_type].capitalize} Preview**\n" \
+            "- Short Leg: #{params[:short_leg_symbol]}\n" \
+            "- Long Leg: #{params[:long_leg_symbol]}\n"
+          end
+
+          friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
+
+          order_details = "**Order Details:**\n" \
+                         "- Strategy: #{params[:strategy_type]}\n" \
+                         "- Action: #{params[:order_instruction] || 'open'}\n" \
+                         "- Quantity: #{params[:quantity] || 1}\n" \
+                         "- Price: $#{params[:price]}\n" \
+                         "- Account: #{friendly_name} (#{params[:account_name]})\n\n"
+
+          # Use OrderPreview data object for summary
+          op = order_preview
+          summary = "**Preview Result:**\n" \
+                    "- Status: #{op.status || 'N/A'}\n" \
+                    "- Price: $#{op.price || 'N/A'}\n" \
+                    "- Quantity: #{op.quantity || 'N/A'}\n" \
+                    "- Commission: $#{op.commission}\n" \
+                    "- Fees: $#{op.fees}\n" \
+                    "- Accepted?: #{op.accepted? ? 'Yes' : 'No'}\n"
+
+          # Redact and pretty print the full data object as JSON
+          redacted_data = Redactor.redact(op.to_h)
+          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
+
+          "#{strategy_summary}\n#{order_details}#{summary}\n#{full_response}"
+        rescue => e
+          "**Order Preview Response:**\n\nError formatting preview: #{e.message}"
         end
       end
     end
