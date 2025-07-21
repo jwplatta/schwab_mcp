@@ -1,6 +1,7 @@
+# frozen_string_literal: true
+
 require "mcp"
 require "schwab_rb"
-require "json"
 require "date"
 require_relative "../loggable"
 require_relative "../option_chain_filter"
@@ -17,7 +18,7 @@ module SchwabMCP
           strategy_type: {
             type: "string",
             description: "Type of option strategy to find",
-            enum: ["ironcondor", "callspread", "putspread"]
+            enum: %w[ironcondor callspread putspread]
           },
           underlying_symbol: {
             type: "string",
@@ -31,12 +32,12 @@ module SchwabMCP
           expiration_type: {
             type: "string",
             description: "Type of expiration (e.g., 'W' for weekly, 'M' for monthly)",
-            enum: ["W", "M", "Q"]
+            enum: %w[W M Q]
           },
           settlement_type: {
             type: "string",
             description: "Settlement type (e.g., 'P' for PM settled, 'A' for AM settled)",
-            enum: ["P", "A"]
+            enum: %w[P A]
           },
           option_root: {
             type: "string",
@@ -83,7 +84,7 @@ module SchwabMCP
             description: "End date for expiration search (YYYY-MM-DD format)"
           }
         },
-        required: ["strategy_type", "underlying_symbol", "expiration_date"]
+        required: %w[strategy_type underlying_symbol expiration_date]
       )
 
       annotations(
@@ -94,19 +95,18 @@ module SchwabMCP
       )
 
       def self.call(strategy_type:, underlying_symbol:, expiration_date:,
-                    expiration_type: nil, settlement_type: nil, option_root: nil,
+                    server_context:, expiration_type: nil, settlement_type: nil, option_root: nil,
                     max_delta: 0.15, max_spread: 20.0, min_credit: 0.0,
                     min_open_interest: 0, dist_from_strike: 0.0, quantity: 1,
-                    from_date: nil, to_date: nil, server_context:)
-
+                    from_date: nil, to_date: nil)
         log_info("Finding #{strategy_type} strategy for #{underlying_symbol} expiring #{expiration_date}")
 
         begin
           unless %w[ironcondor callspread putspread].include?(strategy_type.downcase)
             return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Invalid strategy type '#{strategy_type}'. Must be one of: ironcondor, callspread, putspread"
-            }])
+                                             type: "text",
+                                             text: "**Error**: Invalid strategy type '#{strategy_type}'. Must be one of: ironcondor, callspread, putspread"
+                                           }])
           end
 
           client = SchwabClientFactory.create_client
@@ -116,32 +116,34 @@ module SchwabMCP
           from_dt = from_date ? Date.parse(from_date) : exp_date
           to_dt = to_date ? Date.parse(to_date) : exp_date
 
-          contract_type = strategy_type.downcase == 'callspread' ? 'CALL' :
-                         strategy_type.downcase == 'putspread' ? 'PUT' : 'ALL'
+          contract_type = if strategy_type.downcase == "callspread"
+                            "CALL"
+                          else
+                            strategy_type.downcase == "putspread" ? "PUT" : "ALL"
+                          end
 
           log_debug("Fetching option chain for #{underlying_symbol} (#{contract_type})")
 
-          response = client.get_option_chain(
+          option_chain = client.get_option_chain(
             underlying_symbol.upcase,
             contract_type: contract_type,
             from_date: from_dt,
             to_date: to_dt,
-            include_underlying_quote: true
+            include_underlying_quote: true,
+            return_data_objects: true
           )
 
-          unless response&.body
+          unless option_chain
             log_warn("Empty response from Schwab API for #{underlying_symbol}")
             return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**No Data**: Could not retrieve option chain for #{underlying_symbol}"
-            }])
+                                             type: "text",
+                                             text: "**No Data**: Could not retrieve option chain for #{underlying_symbol}"
+                                           }])
           end
-
-          option_data = JSON.parse(response.body, symbolize_names: true)
 
           result = find_strategy(
             strategy_type: strategy_type.downcase,
-            option_data: option_data,
+            option_chain: option_chain,
             underlying_symbol: underlying_symbol,
             expiration_date: exp_date,
             expiration_type: expiration_type,
@@ -155,70 +157,60 @@ module SchwabMCP
             quantity: quantity
           )
 
-          if result.nil? || result[:status] == 'not_found'
+          if result.nil? || result[:status] == "not_found"
             log_info("No suitable #{strategy_type} found for #{underlying_symbol}")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**No Strategy Found**: Could not find a suitable #{strategy_type} for #{underlying_symbol} with the specified criteria."
-            }])
+            MCP::Tool::Response.new([{
+                                      type: "text",
+                                      text: "**No Strategy Found**: Could not find a suitable #{strategy_type} for #{underlying_symbol} with the specified criteria."
+                                    }])
           else
             log_info("Found #{strategy_type} strategy for #{underlying_symbol}")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: format_strategy_result(result, strategy_type)
-            }])
+            MCP::Tool::Response.new([{
+                                      type: "text",
+                                      text: format_strategy_result(result, strategy_type)
+                                    }])
           end
         rescue Date::Error => e
           log_error("Invalid date format: #{e.message}")
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error**: Invalid date format. Use YYYY-MM-DD format."
-          }])
-        rescue JSON::ParserError => e
-          log_error("Failed to parse option chain data: #{e.message}")
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error**: Failed to parse option chain data from Schwab API."
-          }])
-        rescue => e
+          MCP::Tool::Response.new([{
+                                    type: "text",
+                                    text: "**Error**: Invalid date format. Use YYYY-MM-DD format."
+                                  }])
+        rescue StandardError => e
           log_error("Error finding #{strategy_type} for #{underlying_symbol}: #{e.message}")
           log_debug("Backtrace: #{e.backtrace.first(3).join('\n')}")
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: "**Error** finding #{strategy_type} for #{underlying_symbol}: #{e.message}"
-          }])
+          MCP::Tool::Response.new([{
+                                    type: "text",
+                                    text: "**Error** finding #{strategy_type} for #{underlying_symbol}: #{e.message}"
+                                  }])
         end
       end
 
-      private
-
-      def self.find_strategy(strategy_type:, option_data:, underlying_symbol:, expiration_date:,
-                            expiration_type:, settlement_type:, option_root:, max_delta:,
-                            max_spread:, min_credit:, min_open_interest:, dist_from_strike:, quantity:)
-
+      def self.find_strategy(strategy_type:, option_chain:, underlying_symbol:, expiration_date:,
+                             expiration_type:, settlement_type:, option_root:, max_delta:,
+                             max_spread:, min_credit:, min_open_interest:, dist_from_strike:, quantity:)
         case strategy_type
-        when 'ironcondor'
-          find_iron_condor(option_data, underlying_symbol, expiration_date, expiration_type,
-                          settlement_type, option_root, max_delta, max_spread, min_credit / 2.0,
-                          min_open_interest, dist_from_strike, quantity)
-        when 'callspread'
-          find_spread(option_data, 'call', underlying_symbol, expiration_date, expiration_type,
-                     settlement_type, option_root, max_delta, max_spread, min_credit,
-                     min_open_interest, dist_from_strike, quantity)
-        when 'putspread'
-          find_spread(option_data, 'put', underlying_symbol, expiration_date, expiration_type,
-                     settlement_type, option_root, max_delta, max_spread, min_credit,
-                     min_open_interest, dist_from_strike, quantity)
+        when "ironcondor"
+          find_iron_condor(option_chain, underlying_symbol, expiration_date, expiration_type,
+                           settlement_type, option_root, max_delta, max_spread, min_credit / 2.0,
+                           min_open_interest, dist_from_strike, quantity)
+        when "callspread"
+          find_spread(option_chain, "call", underlying_symbol, expiration_date, expiration_type,
+                      settlement_type, option_root, max_delta, max_spread, min_credit,
+                      min_open_interest, dist_from_strike, quantity)
+        when "putspread"
+          find_spread(option_chain, "put", underlying_symbol, expiration_date, expiration_type,
+                      settlement_type, option_root, max_delta, max_spread, min_credit,
+                      min_open_interest, dist_from_strike, quantity)
         end
       end
 
-      def self.find_iron_condor(option_data, underlying_symbol, expiration_date, expiration_type,
-                               settlement_type, option_root, max_delta, max_spread, min_credit,
-                               min_open_interest, dist_from_strike, quantity)
-
-        underlying_price = option_data.dig(:underlyingPrice) || 0.0
-        call_options = option_data.dig(:callExpDateMap) || {}
-        put_options = option_data.dig(:putExpDateMap) || {}
+      def self.find_iron_condor(option_chain, _underlying_symbol, expiration_date, expiration_type,
+                                settlement_type, option_root, max_delta, max_spread, min_credit,
+                                min_open_interest, dist_from_strike, quantity)
+        underlying_price = option_chain.underlying_price || 0.0
+        call_options = option_chain.call_opts || []
+        put_options = option_chain.put_opts || []
 
         filter = SchwabMCP::OptionChainFilter.new(
           expiration_date: expiration_date,
@@ -234,10 +226,10 @@ module SchwabMCP
           quantity: quantity
         )
 
-        call_spreads = filter.find_spreads(call_options, 'call')
-        put_spreads = filter.find_spreads(put_options, 'put')
+        call_spreads = filter.find_spreads(call_options, "call")
+        put_spreads = filter.find_spreads(put_options, "put")
 
-        return { status: 'not_found' } if call_spreads.empty? || put_spreads.empty?
+        return { status: "not_found" } if call_spreads.empty? || put_spreads.empty?
 
         best_combo = nil
         best_ratio = 0
@@ -248,38 +240,37 @@ module SchwabMCP
             next if total_credit < min_credit / 100.0
 
             total_delta = call_spread[:delta].abs + put_spread[:delta].abs
-            ratio = total_credit / total_delta if total_delta > 0
+            ratio = total_credit / total_delta if total_delta.positive?
 
-            if ratio > best_ratio
-              best_ratio = ratio
-              best_combo = {
-                type: 'iron_condor',
-                call_spread: call_spread,
-                put_spread: put_spread,
-                total_credit: total_credit,
-                total_delta: total_delta,
-                underlying_price: underlying_price
-              }
-            end
+            next unless ratio > best_ratio
+
+            best_ratio = ratio
+            best_combo = {
+              type: "iron_condor",
+              call_spread: call_spread,
+              put_spread: put_spread,
+              total_credit: total_credit,
+              total_delta: total_delta,
+              underlying_price: underlying_price
+            }
           end
         end
 
-        best_combo || { status: 'not_found' }
+        best_combo || { status: "not_found" }
       end
 
-      def self.find_spread(option_data, spread_type, underlying_symbol, expiration_date, expiration_type,
-                          settlement_type, option_root, max_delta, max_spread, min_credit,
-                          min_open_interest, dist_from_strike, quantity)
-
-        underlying_price = option_data.dig(:underlyingPrice) || 0.0
-        options_map = case spread_type
-                     when 'call'
-                       option_data.dig(:callExpDateMap) || {}
-                     when 'put'
-                       option_data.dig(:putExpDateMap) || {}
-                     else
-                       return { status: 'not_found' }
-                     end
+      def self.find_spread(option_chain, spread_type, _underlying_symbol, expiration_date, expiration_type,
+                           settlement_type, option_root, max_delta, max_spread, min_credit,
+                           min_open_interest, dist_from_strike, quantity)
+        underlying_price = option_chain.underlying_price || 0.0
+        options_array = case spread_type
+                        when "call"
+                          option_chain.call_opts || []
+                        when "put"
+                          option_chain.put_opts || []
+                        else
+                          return { status: "not_found" }
+                        end
 
         filter = SchwabMCP::OptionChainFilter.new(
           expiration_date: expiration_date,
@@ -295,9 +286,9 @@ module SchwabMCP
           quantity: quantity
         )
 
-        spreads = filter.find_spreads(options_map, spread_type)
+        spreads = filter.find_spreads(options_array, spread_type)
 
-        return { status: 'not_found' } if spreads.empty?
+        return { status: "not_found" } if spreads.empty?
 
         best_spread = spreads.max_by { |spread| spread[:credit] }
         best_spread.merge(type: "#{spread_type}_spread", underlying_price: underlying_price)
@@ -305,9 +296,9 @@ module SchwabMCP
 
       def self.format_strategy_result(result, strategy_type)
         case result[:type]
-        when 'iron_condor'
+        when "iron_condor"
           format_iron_condor(result)
-        when 'call_spread', 'put_spread'
+        when "call_spread", "put_spread"
           format_spread(result, result[:type])
         else
           "**Found Strategy**: #{strategy_type.upcase}\n\n#{result.to_json}"
@@ -343,7 +334,7 @@ module SchwabMCP
       def self.format_spread(result, spread_type)
         short_opt = result[:short_option]
         long_opt = result[:long_option]
-        option_type = spread_type == 'call_spread' ? 'Call' : 'Put'
+        option_type = spread_type == "call_spread" ? "Call" : "Put"
 
         <<~TEXT
           **#{option_type.upcase} SPREAD FOUND**

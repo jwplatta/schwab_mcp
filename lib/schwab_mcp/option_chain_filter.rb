@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "loggable"
 
 module SchwabMCP
@@ -42,52 +43,44 @@ module SchwabMCP
       @min_strike = min_strike
     end
 
-    def select(options_map)
+    def select(options_array)
       filtered_options = []
-      exp_date_str = expiration_date.strftime('%Y-%m-%d')
+      exp_date_str = expiration_date.strftime("%Y-%m-%d")
 
-      options_map.each do |date_key, strikes|
-        strikes.each do |strike_key, option_array|
-          option_array.each do |option|
-            next unless passes_delta_filter?(option)
-            next unless passes_strike_range_filter?(option)
-            filtered_options << option
-          end
-        end
+      options_array.each do |option|
+        next unless option_matches_date?(option, exp_date_str)
+        next unless passes_delta_filter?(option)
+        next unless passes_strike_range_filter?(option)
+
+        filtered_options << option
       end
 
       log_debug("Found #{filtered_options.size} filtered options")
       filtered_options
     end
 
-    def find_spreads(options_map, option_type)
+    def find_spreads(options_array, option_type)
       spreads = []
-      exp_date_str = expiration_date.strftime('%Y-%m-%d')
+      exp_date_str = expiration_date.strftime("%Y-%m-%d")
+
+      # Filter options for the target expiration date
+      date_filtered_options = options_array.select { |opt| option_matches_date?(opt, exp_date_str) }
+      log_debug("Processing #{date_filtered_options.size} options for date filter")
 
       short_cnt = 0
 
-      options_map.each do |date_key, strikes|
-        next unless date_matches?(date_key, exp_date_str)
-        log_debug("Processing options for date: #{date_key}. Searching #{strikes.size} strikes...")
+      date_filtered_options.each do |short_option|
+        next unless passes_short_option_filters?(short_option)
 
-        strikes.each do |strike_key, option_array|
-          option_array.each do |short_option|
-            next unless passes_short_option_filters?(short_option)
+        log_debug("Found short option: #{get_option_symbol(short_option)} at strike #{get_option_strike(short_option)}")
 
-            log_debug("Found short option: #{short_option[:symbol]} at strike #{short_option[:strikePrice]}")
+        short_cnt += 1
 
-            short_cnt += 1
+        long_options = find_long_option_candidates(date_filtered_options, short_option, option_type)
 
-            short_strike = short_option[:strikePrice]
-            short_mark = short_option[:mark]
-
-            long_options = find_long_option_candidates(strikes, short_option, option_type)
-
-            long_options.each do |long_option|
-              spread = build_spread(short_option, long_option)
-              spreads << spread if spread
-            end
-          end
+        long_options.each do |long_option|
+          spread = build_spread(short_option, long_option)
+          spreads << spread if spread
         end
       end
 
@@ -107,24 +100,61 @@ module SchwabMCP
 
     private
 
-    def date_matches?(date_key, exp_date_str)
-      date_key.to_s.include?(exp_date_str)
+    def option_matches_date?(option, exp_date_str)
+      if option.respond_to?(:expiration_date)
+        option.expiration_date.strftime("%Y-%m-%d") == exp_date_str
+      else
+        # Fallback for hash format
+        false
+      end
+    end
+
+    def get_option_symbol(option)
+      option.respond_to?(:symbol) ? option.symbol : option[:symbol]
+    end
+
+    def get_option_strike(option)
+      option.respond_to?(:strike) ? option.strike : option[:strikePrice]
+    end
+
+    def get_option_mark(option)
+      option.respond_to?(:mark) ? option.mark : option[:mark]
+    end
+
+    def get_option_delta(option)
+      option.respond_to?(:delta) ? option.delta : option[:delta]
+    end
+
+    def get_option_open_interest(option)
+      option.respond_to?(:open_interest) ? option.open_interest : option[:openInterest]
+    end
+
+    def get_option_expiration_type(option)
+      option.respond_to?(:expiration_type) ? option.expiration_type : option[:expirationType]
+    end
+
+    def get_option_settlement_type(option)
+      option.respond_to?(:settlement_type) ? option.settlement_type : option[:settlementType]
+    end
+
+    def get_option_root(option)
+      option.respond_to?(:option_root) ? option.option_root : option[:optionRoot]
     end
 
     def passes_delta_filter?(option)
-      delta = option[:delta]&.abs || 0.0
+      delta = get_option_delta(option)&.abs || 0.0
       delta <= max_delta && delta >= min_delta
     end
 
     def passes_open_interest_filter?(option)
-      open_interest = option[:openInterest] || 0
+      open_interest = get_option_open_interest(option) || 0
       open_interest >= min_open_interest
     end
 
     def passes_distance_filter?(option)
       raise "Underlying price must be set for distance filter" unless underlying_price
 
-      strike = option[:strikePrice]
+      strike = get_option_strike(option)
       return false unless strike
 
       distance = ((underlying_price - strike) / underlying_price).abs
@@ -132,15 +162,15 @@ module SchwabMCP
     end
 
     def passes_optional_filters?(option)
-      return false if expiration_type && option[:expirationType] != expiration_type
-      return false if settlement_type && option[:settlementType] != settlement_type
-      return false if option_root && option[:optionRoot] != option_root
+      return false if expiration_type && get_option_expiration_type(option) != expiration_type
+      return false if settlement_type && get_option_settlement_type(option) != settlement_type
+      return false if option_root && get_option_root(option) != option_root
 
       true
     end
 
     def passes_strike_range_filter?(option)
-      strike = option[:strikePrice]
+      strike = get_option_strike(option)
       return false unless strike
 
       return false if @min_strike && strike < @min_strike
@@ -149,23 +179,21 @@ module SchwabMCP
       true
     end
 
-    def find_long_option_candidates(strikes, short_option, option_type)
-      short_strike = short_option[:strikePrice]
+    def find_long_option_candidates(options_array, short_option, option_type)
+      short_strike = get_option_strike(short_option)
       candidates = []
 
-      strikes.each do |long_strike_key, long_option_array|
-        long_option_array.each do |long_option|
-          long_strike = long_option[:strikePrice]
-          long_mark = long_option[:mark]
+      options_array.each do |long_option|
+        long_strike = get_option_strike(long_option)
+        long_mark = get_option_mark(long_option)
 
-          next unless long_mark > 0
-          next unless valid_spread_structure?(short_strike, long_strike, option_type)
-          next unless passes_min_credit?(short_option, long_option)
-          next unless passes_optional_filters?(long_option)
-          next unless passes_open_interest_filter?(long_option)
+        next unless long_mark.positive?
+        next unless valid_spread_structure?(short_strike, long_strike, option_type)
+        next unless passes_min_credit?(short_option, long_option)
+        next unless passes_optional_filters?(long_option)
+        next unless passes_open_interest_filter?(long_option)
 
-          candidates << long_option
-        end
+        candidates << long_option
       end
 
       candidates
@@ -173,10 +201,10 @@ module SchwabMCP
 
     def valid_spread_structure?(short_strike, long_strike, option_type)
       case option_type
-      when 'call'
+      when "call"
         long_strike > short_strike && (long_strike - short_strike) <= max_spread
 
-      when 'put'
+      when "put"
         long_strike < short_strike && (short_strike - long_strike) <= max_spread
       else
         false
@@ -186,28 +214,50 @@ module SchwabMCP
     def passes_min_credit?(short_option, long_option)
       return true if min_credit <= 0
 
-      short_mark = short_option[:mark]
-      long_mark = long_option[:mark]
+      short_mark = get_option_mark(short_option)
+      long_mark = get_option_mark(long_option)
       credit = short_mark - long_mark
 
       credit * 100 >= min_credit
     end
 
     def build_spread(short_option, long_option)
-      short_mark = short_option[:mark]
-      long_mark = long_option[:mark]
+      short_mark = get_option_mark(short_option)
+      long_mark = get_option_mark(long_option)
       credit = short_mark - long_mark
-      short_strike = short_option[:strikePrice]
-      long_strike = long_option[:strikePrice]
+      short_strike = get_option_strike(short_option)
+      long_strike = get_option_strike(long_option)
+
+      # Convert data objects to hash for compatibility with existing code
+      short_hash = option_to_hash(short_option)
+      long_hash = option_to_hash(long_option)
 
       {
-        short_option: short_option,
-        long_option: long_option,
+        short_option: short_hash,
+        long_option: long_hash,
         credit: credit,
-        delta: short_option[:delta] || 0,
+        delta: get_option_delta(short_option) || 0,
         spread_width: (short_strike - long_strike).abs,
         quantity: quantity
       }
+    end
+
+    def option_to_hash(option)
+      if option.respond_to?(:symbol)
+        # Data object - convert to hash
+        {
+          symbol: option.symbol,
+          strikePrice: option.strike,
+          mark: option.mark,
+          bid: option.respond_to?(:bid) ? option.bid : 0.0,
+          ask: option.respond_to?(:ask) ? option.ask : 0.0,
+          delta: option.delta,
+          openInterest: option.open_interest
+        }
+      else
+        # Already a hash
+        option
+      end
     end
   end
 end
