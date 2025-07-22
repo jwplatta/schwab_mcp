@@ -81,9 +81,10 @@ module SchwabMCP
 
         unless params[:account_name].end_with?('_ACCOUNT')
           log_error("Invalid account name format: #{params[:account_name]}")
+          error_msg = "**Error**: Account name must end with '_ACCOUNT'. Example: 'TRADING_BROKERAGE_ACCOUNT'"
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Account name must end with '_ACCOUNT'. Example: 'TRADING_BROKERAGE_ACCOUNT'"
+            text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
@@ -125,18 +126,19 @@ module SchwabMCP
             }])
           else
             log_warn("Empty response from Schwab API for order preview")
+            error_msg = "**No Data**: Empty response from Schwab API for order preview"
             MCP::Tool::Response.new([{
               type: "text",
-              text: "**No Data**: Empty response from Schwab API for order preview"
+              text: Redactor.redact_formatted_text(error_msg)
             }])
           end
 
         rescue => e
           log_error("Error previewing #{params[:strategy_type]} order: #{e.message}")
-          log_debug("Backtrace: #{e.backtrace.first(5).join('\n')}")
+          error_msg = "**Error** previewing #{params[:strategy_type]} order: #{e.message}\n\n#{e.backtrace.first(3).join('\\n')}"
           MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error** previewing #{params[:strategy_type]} order: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
+            text: Redactor.redact_formatted_text(error_msg)
           }])
         end
       end
@@ -148,9 +150,10 @@ module SchwabMCP
         unless account_id
           available_accounts = ENV.keys.select { |key| key.end_with?('_ACCOUNT') }
           log_error("Account name '#{account_name}' not found in environment variables")
+          error_msg = "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+            text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
@@ -160,18 +163,20 @@ module SchwabMCP
         account_numbers = client.get_account_numbers(return_data_objects: true)
         unless account_numbers && !account_numbers.empty?
           log_error("Failed to retrieve account numbers or no accounts returned")
+          error_msg = "**Error**: Failed to retrieve account numbers from Schwab API or no accounts returned"
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Failed to retrieve account numbers from Schwab API or no accounts returned"
+            text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
-        mapping = account_numbers.find { |acct| acct.account_number == account_id }
+        mapping = account_numbers.accounts.find { |acct| acct.account_number == account_id }
         unless mapping
           log_error("Account ID not found in available accounts")
+          error_msg = "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
           return MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
+            text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
