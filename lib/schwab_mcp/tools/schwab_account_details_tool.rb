@@ -20,7 +20,7 @@ module SchwabMCP
           },
           fields: {
             type: "array",
-            description: "Optional account fields to retrieve (balances, positions, orders)",
+            description: "Optional account fields to retrieve (positions)",
             items: {
               type: "string"
             }
@@ -87,8 +87,8 @@ module SchwabMCP
           end
 
           log_debug("Found account hash for account ID: #{account_name}")
-
           log_debug("Fetching account information with fields: #{fields}")
+
           account = client.get_account(account_hash, fields: fields)
 
           if account
