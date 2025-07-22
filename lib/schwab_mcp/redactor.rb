@@ -89,6 +89,10 @@ module SchwabMCP
         redacted.gsub!(/account[_\s]*number[_\s]*[:\=]\s*\d{8,9}/i, "account_number: #{REDACTED_ACCOUNT_PLACEHOLDER}")
         redacted.gsub!(/account[_\s]*id[_\s]*[:\=]\s*\d{8,9}/i, "account_id: #{REDACTED_ACCOUNT_PLACEHOLDER}")
 
+        # Redact long hashes (40+ hex chars) in URLs/logs (e.g., Schwab account hashes)
+        # Example: /accounts/4996EA061B4878E8D0B9063DF74925E5688F475BE00AF6A0A41E1FC4A2510CA0/
+        redacted.gsub!(/\b[0-9a-fA-F]{40,}\b/, REDACTED_HASH_PLACEHOLDER)
+
         redacted
       end
 
