@@ -10,3 +10,4 @@
 .rspec_status
 .env
 token.json
+*.log.*
