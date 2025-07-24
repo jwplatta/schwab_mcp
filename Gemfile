@@ -12,7 +12,7 @@ gem "rspec", "~> 3.0"
 
 gem "rubocop", "~> 1.21"
 
-gem 'schwab_rb', '~> 0.3.1'
+gem 'schwab_rb', '~> 0.3.2'
 gem 'mcp'
 gem 'dotenv'
 gem 'pry'
