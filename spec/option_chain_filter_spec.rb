@@ -34,12 +34,15 @@ RSpec.describe SchwabMCP::OptionChainFilter do
 
   describe "#passes_short_option_filters?" do
     let(:base_option) do
-      {
-        delta: -0.10,
-        openInterest: 50,
-        strikePrice: 5500.0,
-        mark: 5.50
-      }
+      double("Option",
+             delta: -0.10,
+             open_interest: 50,
+             strike: 5500.0,
+             mark: 5.50,
+             expiration_date: expiration_date,
+             expiration_type: nil,
+             settlement_type: nil,
+             option_root: nil)
     end
 
     context "with valid option parameters" do
@@ -50,31 +53,71 @@ RSpec.describe SchwabMCP::OptionChainFilter do
 
     context "with invalid delta" do
       it "returns false when delta is too high (absolute value)" do
-        high_delta_option = base_option.merge(delta: -0.25)
+        high_delta_option = double("Option",
+                                   delta: -0.25,
+                                   open_interest: 50,
+                                   strike: 5500.0,
+                                   mark: 5.50,
+                                   expiration_date: expiration_date,
+                                   expiration_type: nil,
+                                   settlement_type: nil,
+                                   option_root: nil)
         expect(filter.passes_short_option_filters?(high_delta_option)).to be false
       end
 
       it "returns true for positive delta (delta filter only checks absolute value)" do
-        positive_delta_option = base_option.merge(delta: 0.10)
+        positive_delta_option = double("Option",
+                                       delta: 0.10,
+                                       open_interest: 50,
+                                       strike: 5500.0,
+                                       mark: 5.50,
+                                       expiration_date: expiration_date,
+                                       expiration_type: nil,
+                                       settlement_type: nil,
+                                       option_root: nil)
         expect(filter.passes_short_option_filters?(positive_delta_option)).to be true
       end
     end
 
     context "with insufficient open interest" do
       it "returns false when open interest is below minimum" do
-        low_oi_option = base_option.merge(openInterest: 5)
+        low_oi_option = double("Option",
+                               delta: -0.10,
+                               open_interest: 5,
+                               strike: 5500.0,
+                               mark: 5.50,
+                               expiration_date: expiration_date,
+                               expiration_type: nil,
+                               settlement_type: nil,
+                               option_root: nil)
         expect(filter.passes_short_option_filters?(low_oi_option)).to be false
       end
     end
 
     context "with strike price too close to underlying" do
       it "returns false when strike is within distance threshold" do
-        close_strike_option = base_option.merge(strikePrice: 5790.0)
+        close_strike_option = double("Option",
+                                     delta: -0.10,
+                                     open_interest: 50,
+                                     strike: 5790.0,
+                                     mark: 5.50,
+                                     expiration_date: expiration_date,
+                                     expiration_type: nil,
+                                     settlement_type: nil,
+                                     option_root: nil)
         expect(filter.passes_short_option_filters?(close_strike_option)).to be false
       end
 
       it "returns true when strike is far enough from underlying" do
-        far_strike_option = base_option.merge(strikePrice: 5500.0)
+        far_strike_option = double("Option",
+                                   delta: -0.10,
+                                   open_interest: 50,
+                                   strike: 5500.0,
+                                   mark: 5.50,
+                                   expiration_date: expiration_date,
+                                   expiration_type: nil,
+                                   settlement_type: nil,
+                                   option_root: nil)
         expect(filter.passes_short_option_filters?(far_strike_option)).to be true
       end
     end
@@ -92,9 +135,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                expiration_date: Date.new(2025, 1, 17),
                bid: 5.45,
                ask: 5.55,
-               respond_to?: lambda { |method|
-                 %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-               }),
+               expiration_type: nil,
+               settlement_type: nil,
+               option_root: nil),
         double("Option",
                delta: -0.08,
                open_interest: 30,
@@ -104,9 +147,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                expiration_date: Date.new(2025, 1, 17),
                bid: 5.45,
                ask: 5.55,
-               respond_to?: lambda { |method|
-                 %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-               }),
+               expiration_type: nil,
+               settlement_type: nil,
+               option_root: nil),
         double("Option",
                delta: -0.06,
                open_interest: 25,
@@ -116,9 +159,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                expiration_date: Date.new(2025, 1, 17),
                bid: 5.45,
                ask: 5.55,
-               respond_to?: lambda { |method|
-                 %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-               }),
+               expiration_type: nil,
+               settlement_type: nil,
+               option_root: nil),
         double("Option",
                delta: -0.04,
                open_interest: 15,
@@ -128,9 +171,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                expiration_date: Date.new(2025, 1, 17),
                bid: 5.45,
                ask: 5.55,
-               respond_to?: lambda { |method|
-                 %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-               })
+               expiration_type: nil,
+               settlement_type: nil,
+               option_root: nil)
       ]
     end
 
@@ -203,9 +246,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: 0.08,
                  open_interest: 30,
@@ -215,9 +258,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: 0.06,
                  open_interest: 25,
@@ -227,9 +270,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 })
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil)
         ]
       end
 
@@ -267,9 +310,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 })
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil)
         ]
       end
 
@@ -283,17 +326,20 @@ RSpec.describe SchwabMCP::OptionChainFilter do
   describe "filtering behavior" do
     context "delta filtering" do
       it "accepts options with delta within threshold" do
-        valid_option = { delta: 0.10, openInterest: 50, strikePrice: 5500.0, mark: 5.50 }
+        valid_option = double("Option", delta: 0.10, open_interest: 50, strike: 5500.0, mark: 5.50,
+                              expiration_date: expiration_date, expiration_type: nil, settlement_type: nil, option_root: nil)
         expect(filter.passes_short_option_filters?(valid_option)).to be true
       end
 
       it "rejects options with delta exceeding threshold" do
-        high_delta_option = { delta: 0.20, openInterest: 50, strikePrice: 5500.0, mark: 5.50 }
+        high_delta_option = double("Option", delta: 0.20, open_interest: 50, strike: 5500.0, mark: 5.50,
+                                   expiration_date: expiration_date, expiration_type: nil, settlement_type: nil, option_root: nil)
         expect(filter.passes_short_option_filters?(high_delta_option)).to be false
       end
 
       it "handles negative delta correctly" do
-        negative_delta_option = { delta: -0.10, openInterest: 50, strikePrice: 5500.0, mark: 5.50 }
+        negative_delta_option = double("Option", delta: -0.10, open_interest: 50, strike: 5500.0, mark: 5.50,
+                                       expiration_date: expiration_date, expiration_type: nil, settlement_type: nil, option_root: nil)
         expect(filter.passes_short_option_filters?(negative_delta_option)).to be true
       end
     end
@@ -312,15 +358,15 @@ RSpec.describe SchwabMCP::OptionChainFilter do
       end
 
       it "accepts spreads that meet minimum credit requirement" do
-        short_option = { mark: 6.00, strikePrice: 5500.0, delta: -0.10 }
-        long_option = { mark: 4.00, strikePrice: 5490.0, delta: -0.08 }
+        short_option = double("Option", mark: 6.00, strike: 5500.0, delta: -0.10)
+        long_option = double("Option", mark: 4.00, strike: 5490.0, delta: -0.08)
 
         expect(high_credit_filter.send(:passes_min_credit?, short_option, long_option)).to be true
       end
 
       it "rejects spreads below minimum credit requirement" do
-        short_option = { mark: 5.50, strikePrice: 5500.0, delta: -0.10 }
-        long_option = { mark: 4.25, strikePrice: 5490.0, delta: -0.08 }
+        short_option = double("Option", mark: 5.50, strike: 5500.0, delta: -0.10)
+        long_option = double("Option", mark: 4.25, strike: 5490.0, delta: -0.08)
 
         expect(high_credit_filter.send(:passes_min_credit?, short_option, long_option)).to be false
       end
@@ -336,8 +382,8 @@ RSpec.describe SchwabMCP::OptionChainFilter do
           dist_from_strike: 0.05
         )
 
-        short_option = { mark: 1.00, strikePrice: 5500.0, delta: -0.10 }
-        long_option = { mark: 0.90, strikePrice: 5490.0, delta: -0.08 }
+        short_option = double("Option", mark: 1.00, strike: 5500.0, delta: -0.10)
+        long_option = double("Option", mark: 0.90, strike: 5490.0, delta: -0.08)
 
         expect(zero_credit_filter.send(:passes_min_credit?, short_option, long_option)).to be true
       end
@@ -355,9 +401,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: -0.08,
                  open_interest: 30,
@@ -367,9 +413,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17),
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 })
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil)
         ]
 
         test_filter = described_class.new(
@@ -397,9 +443,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 24), # Different date
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: -0.08,
                  open_interest: 30,
@@ -409,9 +455,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 24), # Different date
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 })
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil)
         ]
 
         spreads = filter.find_spreads(non_matching_options, "put")
@@ -429,9 +475,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17), # Matching date
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: -0.08,
                  open_interest: 30,
@@ -441,9 +487,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 17), # Matching date
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 }),
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil),
           double("Option",
                  delta: -0.06,
                  open_interest: 25,
@@ -453,9 +499,9 @@ RSpec.describe SchwabMCP::OptionChainFilter do
                  expiration_date: Date.new(2025, 1, 24), # Non-matching date
                  bid: 5.45,
                  ask: 5.55,
-                 respond_to?: lambda { |method|
-                   %i[delta open_interest strike mark symbol expiration_date bid ask].include?(method)
-                 })
+                 expiration_type: nil,
+                 settlement_type: nil,
+                 option_root: nil)
         ]
 
         test_filter = described_class.new(
