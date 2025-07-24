@@ -127,12 +127,16 @@ module SchwabMCP
         idempotent_hint: true
       )
 
-      def self.call(symbol:, server_context:, contract_type: nil, strike_count: nil, include_underlying_quote: nil,
-                    strategy: nil, strike_range: nil, option_type: nil, exp_month: nil,
-                    interval: nil, strike: nil, from_date: nil, to_date: nil, volatility: nil,
-                    underlying_price: nil, interest_rate: nil, days_to_expiration: nil,
-                    entitlement: nil, max_delta: nil, min_delta: nil, max_strike: nil,
-                    min_strike: nil, expiration_date: nil)
+      def self.call(
+        symbol:, server_context:, contract_type: nil, strike_count: nil,
+        include_underlying_quote: nil,
+        strategy: nil, strike_range: nil,
+        option_type: nil, exp_month: nil,
+        interval: nil, strike: nil, from_date: nil, to_date: nil, volatility: nil,
+        underlying_price: nil, interest_rate: nil, days_to_expiration: nil,
+        entitlement: nil, max_delta: nil, min_delta: nil, max_strike: nil,
+        min_strike: nil, expiration_date: nil
+      )
         log_info("Getting option chain for symbol: #{symbol}")
 
         begin
@@ -183,35 +187,17 @@ module SchwabMCP
                   min_strike: min_strike
                 )
 
-                # Convert option chain to hash format for filtering compatibility
-                chain_hash = {
-                  callExpDateMap: option_chain.call_exp_date_map || {},
-                  putExpDateMap: option_chain.put_exp_date_map || {}
-                }
+                filtered_calls = filter.select(option_chain.call_opts)
+                filtered_puts = filter.select(option_chain.put_opts)
 
-                filtered_response = chain_hash.dup
+                log_debug("Filtered #{filtered_calls.size} call options")
+                log_debug("Filtered #{filtered_puts.size} put options")
 
-                if chain_hash[:callExpDateMap]
-                  filtered_calls = filter.select(chain_hash[:callExpDateMap])
-                  log_debug("Filtered #{filtered_calls.size} call options")
-
-                  filtered_response[:callExpDateMap] = reconstruct_exp_date_map(
-                    filtered_calls, expiration_date
-                  )
-                end
-
-                if chain_hash[:putExpDateMap]
-                  filtered_puts = filter.select(chain_hash[:putExpDateMap])
-                  log_debug("Filtered #{filtered_puts.size} put options")
-
-                  filtered_response[:putExpDateMap] = reconstruct_exp_date_map(
-                    filtered_puts, expiration_date
-                  )
-                end
+                filtered_option_chain = create_filtered_option_chain(option_chain, filtered_calls, filtered_puts)
 
                 MCP::Tool::Response.new([{
                                           type: "text",
-                                          text: format_option_chain_response(filtered_response)
+                                          text: format_option_chain_response(filtered_option_chain)
                                         }])
               rescue StandardError => e
                 log_error("Error applying option chain filter: #{e.message}")
@@ -245,29 +231,92 @@ module SchwabMCP
       private_class_method def self.format_option_chain_response(data)
         return data.to_s if data.is_a?(Hash)
 
-        # For OptionChain data object, convert to readable format
         output = []
-        output << "Symbol: #{data.symbol}" if data.respond_to?(:symbol)
+        output << "**Option Chain for #{data.symbol}**"
         output << "Status: #{data.status}" if data.respond_to?(:status)
+        output << "Underlying Price: $#{data.underlying_price}" if data.respond_to?(:underlying_price)
+        output << ""
+
+        strikes_hash = {}
+
+        data.call_opts.each do |call_opt|
+          strike = call_opt.strike
+          strikes_hash[strike] ||= { call: nil, put: nil }
+          strikes_hash[strike][:call] = call_opt
+        end
+
+        data.put_opts.each do |put_opt|
+          strike = put_opt.strike
+          strikes_hash[strike] ||= { call: nil, put: nil }
+          strikes_hash[strike][:put] = put_opt
+        end
+
+        output << "| Call Symbol | Call Mark | Call Ask | Call Bid | Call Delta | Call Open Interest |" \
+                  " Strike | Put Symbol | Put Mark | Put Ask | Put Bid | Put Delta | Put Open Interest |"
+        output << "|-------------|-----------|----------|----------|------------|------------|" \
+                  "--------|------------|----------|---------|---------|-----------|-----------|"
+
+        # Sort strikes and create table rows
+        strikes_hash.keys.sort.each do |strike|
+          call_opt = strikes_hash[strike][:call]
+          put_opt = strikes_hash[strike][:put]
+
+          call_symbol = call_opt ? call_opt.symbol : ""
+          call_mark = call_opt ? format_price(call_opt.mark) : ""
+          call_ask = call_opt ? format_price(call_opt.ask) : ""
+          call_bid = call_opt ? format_price(call_opt.bid) : ""
+          call_delta = call_opt ? format_greek(call_opt.delta) : ""
+          call_open_interest = call_opt ? format_count(call_opt.open_interest) : ""
+
+          put_symbol = put_opt ? put_opt.symbol : ""
+          put_mark = put_opt ? format_price(put_opt.mark) : ""
+          put_ask = put_opt ? format_price(put_opt.ask) : ""
+          put_bid = put_opt ? format_price(put_opt.bid) : ""
+          put_delta = put_opt ? format_greek(put_opt.delta) : ""
+          put_open_interest = put_opt ? format_count(put_opt.open_interest) : ""
+
+          output << "| #{call_symbol} | #{call_mark} | #{call_ask} | #{call_bid} | #{call_delta} | #{call_open_interest} |" \
+                    " #{strike} | #{put_symbol} | #{put_mark} | #{put_ask} | #{put_bid} | #{put_delta} | #{put_open_interest} |"
+        end
 
         output.join("\n")
       end
 
-      private_class_method def self.reconstruct_exp_date_map(filtered_options, target_expiration_date)
-        return {} if filtered_options.empty?
+      private_class_method def self.format_price(price)
+        return "" if price.nil?
 
-        grouped = {}
+        price.zero? ? "0.00" : format("%.2f", price)
+      end
 
-        filtered_options.each do |option|
-          exp_date_key = "#{target_expiration_date}:#{option[:daysToExpiration] || 0}"
-          strike_key = option[:strikePrice].to_s
+      private_class_method def self.format_greek(greek)
+        return "" if greek.nil?
 
-          grouped[exp_date_key] ||= {}
-          grouped[exp_date_key][strike_key] ||= []
-          grouped[exp_date_key][strike_key] << option
+        greek.zero? ? "0.00" : format("%.3f", greek)
+      end
+
+      private_class_method def self.format_count(count)
+        return "" if count.nil?
+
+        count.zero? ? "0" : count.to_s
+      end
+
+
+      private_class_method def self.create_filtered_option_chain(original_chain, filtered_calls, filtered_puts)
+        # Create a simple object that mimics the original data object interface
+        FilteredOptionChain.new(
+          symbol: original_chain.symbol,
+          status: original_chain.status,
+          underlying_price: original_chain.underlying_price,
+          call_opts: filtered_calls,
+          put_opts: filtered_puts
+        )
+      end
+
+      # Simple struct to hold filtered option chain data
+      FilteredOptionChain = Struct.new(:symbol, :status, :underlying_price, :call_opts, :put_opts) do
+        def respond_to?(method_name)
+          super || members.include?(method_name)
         end
-
-        grouped
       end
     end
   end
