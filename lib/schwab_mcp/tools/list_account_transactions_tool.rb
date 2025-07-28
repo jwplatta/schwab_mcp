@@ -96,9 +96,9 @@ module SchwabMCP
           log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
           log_debug("Fetching account numbers mapping")
 
-          account_numbers_response = client.get_account_numbers
+          account_numbers = client.get_account_numbers
 
-          unless account_numbers_response&.body
+          unless account_numbers
             log_error("Failed to retrieve account numbers")
             return MCP::Tool::Response.new([{
               type: "text",
@@ -106,22 +106,15 @@ module SchwabMCP
             }])
           end
 
-          account_mappings = JSON.parse(account_numbers_response.body, symbolize_names: true)
-          log_debug("Account mappings retrieved (#{account_mappings.length} accounts found)")
+          log_debug("Account mappings retrieved (#{account_numbers.size} accounts found)")
 
-          account_hash = nil
-          account_mappings.each do |mapping|
-            if mapping[:accountNumber] == account_id
-              account_hash = mapping[:hashValue]
-              break
-            end
-          end
+          account_hash = account_numbers.find_hash_value(account_id)
 
           unless account_hash
             log_error("Account ID not found in available accounts")
             return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Error**: Account ID not found in available accounts. #{account_mappings.length} accounts available."
+              text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
             }])
           end
 
@@ -156,7 +149,7 @@ module SchwabMCP
 
           log_debug("Fetching transactions with params - start_date: #{start_date_obj}, end_date: #{end_date_obj}, transaction_types: #{transaction_types}, symbol: #{symbol}")
 
-          transactions_response = client.get_transactions(
+          transactions = client.get_transactions(
             account_hash,
             start_date: start_date_obj,
             end_date: end_date_obj,
@@ -164,15 +157,8 @@ module SchwabMCP
             symbol: symbol
           )
 
-          if transactions_response&.body
+          if transactions
             log_info("Successfully retrieved transactions for #{account_name}")
-            # Use schwab_rb Transaction data objects
-            transactions = if transactions_response.body.is_a?(Array)
-              transactions_response.body.map { |t| SchwabRb::DataObjects::Transaction.build(t) }
-            else
-              [SchwabRb::DataObjects::Transaction.build(transactions_response.body)]
-            end
-
             formatted_response = format_transactions_data(transactions, account_name, {
               start_date: start_date,
               end_date: end_date,
@@ -193,17 +179,22 @@ module SchwabMCP
           end
 
         rescue JSON::ParserError => e
-          log_error("JSON parsing error: #{e.message}")
+          redactor = Redactor.new
+          err_msg = redactor.redact(e.message)
+          log_error("JSON parsing error: #{err_msg}")
           MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error**: Failed to parse API response: #{e.message}"
+            text: "**Error**: Failed to parse API response: #{err_msg}"
           }])
         rescue => e
-          log_error("Error retrieving transactions for #{account_name}: #{e.message}")
+          redactor = Redactor.new
+          err_msg = redactor.redact(e.message)
+          log_error("Error retrieving transactions for #{account_name}: #{err_msg}")
           log_debug("Backtrace: #{e.backtrace.first(3).join('\n')}")
+
           MCP::Tool::Response.new([{
             type: "text",
-            text: "**Error** retrieving transactions for #{account_name}: #{e.message}\n\n#{e.backtrace.first(3).join('\n')}"
+            text: "**Error** retrieving transactions for #{account_name}: #{err_msg}\n\n#{e.backtrace.first(3).join('\n')}"
           }])
         end
       end
@@ -244,7 +235,6 @@ module SchwabMCP
           formatted += "No transactions found matching the specified criteria.\n"
         end
 
-        # Redact using to_h for data objects
         redacted_data = Redactor.redact(transactions.map(&:to_h))
         formatted += "\n**Full Response (Redacted):**\n"
         formatted += "```json\n#{JSON.pretty_generate(redacted_data)}\n```"
