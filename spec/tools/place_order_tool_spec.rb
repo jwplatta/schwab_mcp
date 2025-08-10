@@ -11,7 +11,7 @@ RSpec.describe SchwabMCP::Tools::PlaceOrderTool do
 
     before do
       allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(mock_client)
-      allow(SchwabMCP::Orders::OrderFactory).to receive(:build).and_return(mock_order_builder)
+      allow(SchwabRb::Orders::OrderFactory).to receive(:build).and_return(mock_order_builder)
 
       allow(account_numbers).to receive(:size).and_return(1)
       allow(account_numbers).to receive(:find_hash_value).with("12345678").and_return("hash1")

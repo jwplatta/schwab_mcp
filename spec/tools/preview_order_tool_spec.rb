@@ -15,8 +15,12 @@ RSpec.describe SchwabMCP::Tools::PreviewOrderTool do
       to_h: { status: 'ACCEPTED', price: 1.23, quantity: 2, commission: 0.65, fees: 0.05 }
     )
   end
+  let(:account_number_item) { double('AccountNumber', account_number: '12345678', hash_value: 'abc123') }
   let(:account_numbers) do
-    [double('AccountNumber', account_number: '12345678', hash_value: 'abc123')]
+    double('AccountNumbers', 
+           accounts: [account_number_item],
+           size: 1,
+           empty?: false)
   end
 
   before do
@@ -30,7 +34,7 @@ RSpec.describe SchwabMCP::Tools::PreviewOrderTool do
   it 'returns a formatted preview response for a callspread' do
     params = {
       account_name: 'TRADING_BROKERAGE_ACCOUNT',
-      strategy_type: 'callspread',
+      strategy_type: 'vertical',
       price: 1.23,
       quantity: 2,
       short_leg_symbol: 'CALLSHORT',
@@ -47,7 +51,7 @@ RSpec.describe SchwabMCP::Tools::PreviewOrderTool do
   it 'returns an error if account name is invalid' do
     params = {
       account_name: 'INVALID',
-      strategy_type: 'callspread',
+      strategy_type: 'vertical',
       price: 1.23,
       quantity: 2,
       short_leg_symbol: 'CALLSHORT',

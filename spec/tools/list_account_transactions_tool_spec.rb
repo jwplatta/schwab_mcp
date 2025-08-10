@@ -49,14 +49,15 @@ RSpec.describe SchwabMCP::Tools::ListAccountTransactionsTool do
 
   describe ".call" do
     let(:client) { double("client") }
-    let(:account_numbers_response) { double("response", body: [{ accountNumber: "123", hashValue: "abc" }].to_json) }
-    let(:transactions_response) { double("response", body: [transaction_hash]) }
+    let(:account_numbers_mock) { double("AccountNumbers", size: 1, find_hash_value: "abc") }
+    let(:transaction_object) { SchwabRb::DataObjects::Transaction.build(transaction_hash) }
+    let(:transactions_array) { [transaction_object] }
 
     before do
       stub_const("ENV", ENV.to_hash.merge(account_name => "123"))
       allow(SchwabMCP::SchwabClientFactory).to receive(:create_client).and_return(client)
-      allow(client).to receive(:get_account_numbers).and_return(account_numbers_response)
-      allow(client).to receive(:get_transactions).and_return(transactions_response)
+      allow(client).to receive(:get_account_numbers).and_return(account_numbers_mock)
+      allow(client).to receive(:get_transactions).and_return(transactions_array)
     end
 
     it "returns formatted transactions text" do
