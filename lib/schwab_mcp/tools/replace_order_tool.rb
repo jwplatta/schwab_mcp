@@ -1,7 +1,6 @@
 require "mcp"
 require "schwab_rb"
 require_relative "../loggable"
-require_relative "../orders/order_factory"
 require_relative "../redactor"
 require_relative "../schwab_client_factory"
 
@@ -42,6 +41,12 @@ module SchwabMCP
             description: "Whether to open a new position or exit an existing one (default: open)",
             default: "open"
           },
+          credit_debit: {
+            type: "string",
+            enum: %w[credit debit],
+            description: "Whether the order is a credit or debit (default: credit)",
+            default: "credit"
+          },
           put_short_symbol: {
             type: "string",
             description: "Option symbol for the short put leg (required for iron condor)"
@@ -65,6 +70,10 @@ module SchwabMCP
           long_leg_symbol: {
             type: "string",
             description: "Option symbol for the long leg (required for call/put spreads)"
+          },
+          symbol: {
+            type: "string",
+            description: "Single option symbol to place an order for (required for single options)"
           }
         },
         required: %w[account_name order_id strategy_type price]
@@ -98,12 +107,13 @@ module SchwabMCP
 
           account_id, account_hash = account_result
 
-          order_builder = SchwabMCP::Orders::OrderFactory.build(
+          order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
             account_number: account_id,
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
+            credit_debit: (params[:credit_debit] || "credit").to_sym,
             # Iron Condor params
             put_short_symbol: params[:put_short_symbol],
             put_long_symbol: params[:put_long_symbol],
@@ -111,7 +121,9 @@ module SchwabMCP
             call_long_symbol: params[:call_long_symbol],
             # Vertical spread params
             short_leg_symbol: params[:short_leg_symbol],
-            long_leg_symbol: params[:long_leg_symbol]
+            long_leg_symbol: params[:long_leg_symbol],
+            # Single option params
+            symbol: params[:symbol]
           )
 
           log_debug("Making replace order API request for order ID: #{params[:order_id]}")
