@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run all tests: `bundle exec rspec`
 - Run specific test: `bundle exec rspec spec/tools/specific_tool_spec.rb`
 - NEVER use `-v` flag with RSpec - it clutters output unnecessarily
+- Reference @.github/instructions/ruby-testing.instructions.md when writing unit tests
 
 ### Code Quality
 - Run RuboCop linter: `bundle exec rubocop`
@@ -76,6 +77,7 @@ Tools using data objects (safe to follow as examples):
 - Follow snake_case/PascalCase conventions
 - Use `require_relative` for local dependencies
 - Prefer keyword arguments for multi-parameter methods
+- Always use descriptive variable names
 
 ### Tool Development
 - All tools extend `MCP::Tool` and include `Loggable`

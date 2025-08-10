@@ -2,7 +2,6 @@ require "mcp"
 require "schwab_rb"
 require "json"
 require_relative "../loggable"
-require_relative "../orders/order_factory"
 require_relative "../redactor"
 require_relative "../schwab_client_factory"
 
@@ -21,7 +20,7 @@ module SchwabMCP
           },
           strategy_type: {
             type: "string",
-            enum: ["ironcondor", "callspread", "putspread"],
+            enum: ["ironcondor", "vertical", "single"],
             description: "Type of options strategy to preview"
           },
           price: {
@@ -38,6 +37,12 @@ module SchwabMCP
             enum: ["open", "exit"],
             description: "Whether to open a new position or exit an existing one (default: open)",
             default: "open"
+          },
+          credit_debit: {
+            type: "string",
+            enum: %w[credit debit],
+            description: "Whether the order is a credit or debit (default: credit)",
+            default: "credit"
           },
           # Iron Condor specific fields
           put_short_symbol: {
@@ -64,6 +69,11 @@ module SchwabMCP
           long_leg_symbol: {
             type: "string",
             description: "Option symbol for the long leg (required for call/put spreads)"
+          },
+          # Single option specific field
+          symbol: {
+            type: "string",
+            description: "Single option symbol to place an order for (required for single options)"
           }
         },
         required: ["account_name", "strategy_type", "price"]
@@ -98,12 +108,13 @@ module SchwabMCP
 
           account_id, account_hash = account_result
 
-          order_builder = SchwabMCP::Orders::OrderFactory.build(
+          order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
             account_number: account_id,
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
+            credit_debit: (params[:credit_debit] || "credit").to_sym,
             # Iron Condor params
             put_short_symbol: params[:put_short_symbol],
             put_long_symbol: params[:put_long_symbol],
@@ -111,7 +122,9 @@ module SchwabMCP
             call_long_symbol: params[:call_long_symbol],
             # Vertical spread params
             short_leg_symbol: params[:short_leg_symbol],
-            long_leg_symbol: params[:long_leg_symbol]
+            long_leg_symbol: params[:long_leg_symbol],
+            # Single option params
+            symbol: params[:symbol],
           )
 
           log_debug("Making preview order API request")
@@ -192,8 +205,14 @@ module SchwabMCP
           unless missing_fields.empty?
             raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(', ')}"
           end
-        when 'callspread', 'putspread'
+        when 'vertical'
           required_fields = [:short_leg_symbol, :long_leg_symbol]
+          missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
+          unless missing_fields.empty?
+            raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(', ')}"
+          end
+        when 'single'
+          required_fields = [:symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(', ')}"
@@ -215,10 +234,13 @@ module SchwabMCP
             "- Put Long: #{params[:put_long_symbol]}\n" \
             "- Call Short: #{params[:call_short_symbol]}\n" \
             "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'callspread', 'putspread'
-            "**#{params[:strategy_type].capitalize} Preview**\n" \
+          when 'vertical'
+            "**Vertical Preview**\n" \
             "- Short Leg: #{params[:short_leg_symbol]}\n" \
             "- Long Leg: #{params[:long_leg_symbol]}\n"
+          when 'single'
+            "**Single Option Preview**\n" \
+            "- Symbol: #{params[:symbol]}\n"
           end
 
           friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
@@ -247,10 +269,13 @@ module SchwabMCP
             "- Put Long: #{params[:put_long_symbol]}\n" \
             "- Call Short: #{params[:call_short_symbol]}\n" \
             "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'callspread', 'putspread'
-            "**#{params[:strategy_type].capitalize} Preview**\n" \
+          when 'vertical'
+            "**Vertical Preview**\n" \
             "- Short Leg: #{params[:short_leg_symbol]}\n" \
             "- Long Leg: #{params[:long_leg_symbol]}\n"
+          when 'single'
+            "**Single Option Preview**\n" \
+            "- Symbol: #{params[:symbol]}\n"
           end
 
           friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
