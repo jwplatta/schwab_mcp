@@ -1,5 +1,5 @@
 ---
-apply: ****
+applyTo: "**"
 ---
 
 # GitHub Copilot Instructions for SchwabMCP
@@ -11,21 +11,6 @@ This is a Ruby gem that provides a Model Context Protocol (MCP) server for Schwa
 - MCP (Model Context Protocol) framework for tool definitions
 
 ## Development Patterns & Conventions
-
-### Ruby Style & Conventions
-- Follow standard Ruby conventions: snake_case for methods/variables, PascalCase for classes
-- Use `attr_reader` for read-only attributes
-- Prefer keyword arguments for method signatures with multiple parameters
-- Use `require_relative` for local file dependencies
-- Follow Ruby's principle of least surprise in API design
-- Use `frozen_string_literal: true` in all Ruby files
-
-### Testing with RSpec
-- **Always run tests without the `-v` option**: Use `bundle exec rspec` or `bundle exec rspec spec/specific_test.rb`
-- The `-v` verbose option is unnecessary and clutters output
-- All tests should pass before committing changes
-- Mock environment variables in `spec/spec_helper.rb` globally rather than in individual test files
-- Test file naming: `*_spec.rb` for the corresponding `*.rb` file
 
 ### Git Commit Practices
 - **Commit only relevant files** - Don't include unrelated changes or temporary files
