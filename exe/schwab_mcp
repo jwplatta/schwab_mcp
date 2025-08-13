@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require "schwab_mcp"
+require_relative "../lib/schwab_mcp"
 require "dotenv"
 
 Dotenv.load
@@ -14,10 +14,17 @@ required_vars = [
 missing_vars = required_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
 
 unless missing_vars.empty?
-  puts "Missing required environment variables: #{missing_vars.join(', ')}"
+  STDERR.puts "Missing required environment variables: #{missing_vars.join(', ')}"
   exit 1
 end
 
-puts "All required environment variables are set."
+STDERR.puts "All required environment variables are set."
 
-SchwabMCP::Server.new.start
+begin
+  STDERR.puts "Starting Schwab MCP server..."
+  SchwabMCP::Server.new.start
+rescue StandardError => e
+  STDERR.puts "Error starting Schwab MCP server: #{e.message}"
+  STDERR.puts e.backtrace.join("\n")
+  exit 1
+end
