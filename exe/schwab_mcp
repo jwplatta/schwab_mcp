@@ -1,7 +1,9 @@
 #!/usr/bin/env ruby
 
 require "schwab_mcp"
-require "dotenv/load"
+require "dotenv"
+
+Dotenv.load
 
 required_vars = [
   'SCHWAB_API_KEY',
