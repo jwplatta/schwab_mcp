@@ -56,8 +56,7 @@ module SchwabMCP
           - **get_market_hours_tool**: Get market hours for specified markets
           - **list_movers_tool**: Get top ten movers for a given index
 
-          ### Option Strategy Tools:
-          - **option_strategy_finder_tool**: Find option strategies (iron condor, call spread, put spread)
+          ### Option Order Tools:
           - **preview_order_tool**: Preview an options order before placing (⚠️ SAFE PREVIEW)
           - **place_order_tool**: Place an options order for execution (⚠️ DESTRUCTIVE)
           - **replace_order_tool**: Replace an existing order with a new one (⚠️ DESTRUCTIVE)
@@ -84,7 +83,6 @@ module SchwabMCP
 
           # Options
           option_chain_tool(symbol: "SPX", contract_type: "ALL")
-          option_strategy_finder_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
           preview_order_tool(account_name: "TRADING_BROKERAGE_ACCOUNT", strategy_type: "ironcondor", price: 1.50, quantity: 1)
 
           # Account Management
@@ -196,25 +194,6 @@ module SchwabMCP
           - Many other optional parameters for filtering
 
           **Example**: `option_chain_tool(symbol: "SPX", contract_type: "ALL")`
-
-          ### option_strategy_finder_tool
-          Find option strategies using sophisticated algorithms.
-          **Parameters**:
-          - `strategy_type` (required) - "ironcondor", "callspread", or "putspread"
-          - `underlying_symbol` (required) - e.g., "SPX", "$SPX"
-          - `expiration_date` (required) - Target expiration "YYYY-MM-DD"
-          - `max_delta` (optional) - Maximum delta for short legs (default: 0.15)
-          - `max_spread` (optional) - Maximum spread width (default: 20.0)
-          - `min_credit` (optional) - Minimum credit in dollars (default: 100.0)
-          - `min_open_interest` (optional) - Minimum open interest (default: 0)
-          - `dist_from_strike` (optional) - Min distance from current price (default: 0.07)
-          - `expiration_type`, `settlement_type`, `option_root` (optional) - Filters
-
-          **Examples**:
-          ```
-          option_strategy_finder_tool(strategy_type: "ironcondor", underlying_symbol: "SPX", expiration_date: "2025-01-17")
-          option_strategy_finder_tool(strategy_type: "callspread", underlying_symbol: "SPY", expiration_date: "2025-01-10", max_delta: 0.20, min_credit: 50.0)
-          ```
 
           ## Order Management Tools
 

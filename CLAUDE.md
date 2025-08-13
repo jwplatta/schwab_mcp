@@ -46,7 +46,6 @@ This is a Ruby gem providing a Model Context Protocol (MCP) server for Schwab br
 - **Order Tools**: `list_account_orders_tool`, `get_order_tool`, `cancel_order_tool`, `preview_order_tool`, `place_order_tool`, `replace_order_tool`
 - **Market Data Tools**: `quote_tool`, `quotes_tool`, `option_chain_tool`, `list_movers_tool`, `get_market_hours_tool`, `get_price_history_tool`
 - **Transaction Tools**: `list_account_transactions_tool`
-- **Strategy Tools**: `option_strategy_finder_tool`
 - **Utility Tools**: `help_tool`
 
 ## Data Objects Migration
