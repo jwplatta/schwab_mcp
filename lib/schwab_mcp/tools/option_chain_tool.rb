@@ -4,7 +4,6 @@ require "mcp"
 require "schwab_rb"
 require "date"
 require_relative "../loggable"
-require_relative "../option_chain_filter"
 require_relative "../schwab_client_factory"
 
 module SchwabMCP
