@@ -110,7 +110,6 @@ module SchwabMCP
 
         configured_accounts.each_with_index do |account, index|
           response += "#{index + 1}. **#{account[:friendly_name]}** (`#{account[:name]}`)\n"
-          response += "   - Account ID: #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
           response += "   - Status: ✅ Configured\n\n"
         end
 
@@ -122,7 +121,6 @@ module SchwabMCP
         if unconfigured_accounts.any?
           response += "**Unconfigured Accounts Available:**\n\n"
           unconfigured_accounts.each_with_index do |account_obj, index|
-            response += "#{index + 1}. Account ID: #{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}\n"
             response += "   - To configure: Set `YOUR_NAME_ACCOUNT=#{Redactor::REDACTED_ACCOUNT_PLACEHOLDER}` in your .env file\n\n"
           end
         end
