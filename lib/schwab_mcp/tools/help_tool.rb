@@ -57,9 +57,9 @@ module SchwabMCP
           - **list_movers_tool**: Get top ten movers for a given index
 
           ### Option Order Tools:
-          - **preview_order_tool**: Preview an options order before placing (⚠️ SAFE PREVIEW)
-          - **place_order_tool**: Place an options order for execution (⚠️ DESTRUCTIVE)
-          - **replace_order_tool**: Replace an existing order with a new one (⚠️ DESTRUCTIVE)
+          - **preview_order_tool**: Preview an options order before placing (SAFE PREVIEW)
+          - **place_order_tool**: Place an options order for execution (DESTRUCTIVE)
+          - **replace_order_tool**: Replace an existing order with a new one (DESTRUCTIVE)
 
           ### Account Management:
           - **schwab_account_details_tool**: Get account information using account name mapping
@@ -67,7 +67,7 @@ module SchwabMCP
           - **list_account_orders_tool**: List orders for a specific account using account name mapping
           - **list_account_transactions_tool**: List transactions for a specific account
           - **get_order_tool**: Get detailed information for a specific order by order ID
-          - **cancel_order_tool**: Cancel a specific order by order ID (⚠️ DESTRUCTIVE)
+          - **cancel_order_tool**: Cancel a specific order by order ID (DESTRUCTIVE)
 
           ### Documentation:
           - **help_tool**: This help system
@@ -118,7 +118,7 @@ module SchwabMCP
 
       def self.get_tools_help
         <<~HELP
-          # 🔧 Available Tools
+          # Available Tools
 
           ## Market Data & Analysis Tools
 
@@ -197,7 +197,7 @@ module SchwabMCP
 
           ## Order Management Tools
 
-          ### preview_order_tool ⚠️ SAFE PREVIEW
+          ### preview_order_tool SAFE PREVIEW
           Preview an options order before placing to validate structure and see estimated costs.
           **Parameters**:
           - `account_name` (required) - Account name ending with '_ACCOUNT'
@@ -213,7 +213,7 @@ module SchwabMCP
           preview_order_tool(account_name: "TRADING_BROKERAGE_ACCOUNT", strategy_type: "callspread", short_symbol: "SPY250117C00600000", long_symbol: "SPY250117C00610000", price: 2.50)
           ```
 
-          ### place_order_tool ⚠️ DESTRUCTIVE OPERATION
+          ### place_order_tool DESTRUCTIVE OPERATION
           Place an options order for execution. **WARNING**: This places real orders with real money.
           **Parameters**: Same as preview_order_tool
           **Safety Features**:
@@ -226,7 +226,7 @@ module SchwabMCP
           place_order_tool(account_name: "TRADING_BROKERAGE_ACCOUNT", strategy_type: "ironcondor", price: 1.50, quantity: 1)
           ```
 
-          ### replace_order_tool ⚠️ DESTRUCTIVE OPERATION
+          ### replace_order_tool DESTRUCTIVE OPERATION
           Replace an existing order with a new one. **WARNING**: Cancels existing order and places new one.
           **Parameters**:
           - `order_id` (required) - ID of existing order to replace
@@ -298,7 +298,7 @@ module SchwabMCP
           get_order_tool(order_id: "987654321", account_name: "IRA_ACCOUNT")
           ```
 
-          ### cancel_order_tool ⚠️ DESTRUCTIVE OPERATION
+          ### cancel_order_tool DESTRUCTIVE OPERATION
           Cancel a specific order by order ID. **WARNING**: This action cannot be undone.
           **Parameters**:
           - `order_id` (required) - The numeric order ID to cancel
@@ -335,7 +335,7 @@ module SchwabMCP
 
       def self.get_setup_help
         <<~HELP
-          # 🚀 Setup Guide
+          # Setup Guide
 
           ## 1. Environment Variables
           Set these required environment variables:
