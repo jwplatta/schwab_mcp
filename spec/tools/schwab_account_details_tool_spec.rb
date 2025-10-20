@@ -5,7 +5,6 @@ require "spec_helper"
 RSpec.describe SchwabMCP::Tools::SchwabAccountDetailsTool do
   describe ".call" do
     let(:mock_client) { instance_double("SchwabRb::Client") }
-    let(:account_numbers) { instance_double("SchwabRb::DataObjects::AccountNumbers") }
     let(:account) { instance_double("SchwabRb::DataObjects::Account") }
     let(:current_balances) { instance_double("SchwabRb::DataObjects::CurrentBalances") }
     let(:position) { instance_double("SchwabRb::DataObjects::Position") }
@@ -13,10 +12,7 @@ RSpec.describe SchwabMCP::Tools::SchwabAccountDetailsTool do
 
     before do
       allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(mock_client)
-      allow(ENV).to receive(:[]).with("TRADING_ACCOUNT").and_return("123456789")
-
-      allow(account_numbers).to receive(:find_hash_value).with("123456789").and_return("hash123")
-      allow(account_numbers).to receive(:size).and_return(1)
+      allow(mock_client).to receive(:available_account_names).and_return(["TRADING_ACCOUNT"])
 
       allow(current_balances).to receive(:cash_balance).and_return(10000.50)
       allow(current_balances).to receive(:buying_power).and_return(20000.75)
@@ -57,45 +53,20 @@ RSpec.describe SchwabMCP::Tools::SchwabAccountDetailsTool do
       end
     end
 
-    context "when account not found in environment" do
+    context "when account not found in configured accounts" do
       it "returns error response" do
-        allow(ENV).to receive(:[]).with("MISSING_ACCOUNT").and_return(nil)
-        allow(ENV).to receive(:keys).and_return(["TRADING_ACCOUNT"])
-
-        response = described_class.call(account_name: "MISSING_ACCOUNT", server_context: {})
-
-        expect(response).to be_a(MCP::Tool::Response)
-        expect(response.content.first[:text]).to include("not found in environment variables")
-      end
-    end
-
-    context "when account numbers API call fails" do
-      it "returns error response" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(nil)
+        allow(mock_client).to receive(:available_account_names).and_return(["OTHER_ACCOUNT"])
 
         response = described_class.call(account_name: "TRADING_ACCOUNT", server_context: {})
 
         expect(response).to be_a(MCP::Tool::Response)
-        expect(response.content.first[:text]).to include("Failed to retrieve account numbers")
-      end
-    end
-
-    context "when account ID not found in available accounts" do
-      it "returns error response" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
-        allow(account_numbers).to receive(:find_hash_value).with("123456789").and_return(nil)
-
-        response = described_class.call(account_name: "TRADING_ACCOUNT", server_context: {})
-
-        expect(response).to be_a(MCP::Tool::Response)
-        expect(response.content.first[:text]).to include("Account ID not found in available accounts")
+        expect(response.content.first[:text]).to include("not found in configured accounts")
       end
     end
 
     context "when account information is successfully retrieved" do
       it "returns formatted account data" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
-        allow(mock_client).to receive(:get_account).with("hash123", fields: nil).and_return(account)
+        allow(mock_client).to receive(:get_account).with(account_name: "TRADING_ACCOUNT", fields: nil).and_return(account)
 
         response = described_class.call(account_name: "TRADING_ACCOUNT", server_context: {})
 
@@ -111,8 +82,7 @@ RSpec.describe SchwabMCP::Tools::SchwabAccountDetailsTool do
 
     context "when account API returns no data" do
       it "returns no data message" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
-        allow(mock_client).to receive(:get_account).with("hash123", fields: nil).and_return(nil)
+        allow(mock_client).to receive(:get_account).with(account_name: "TRADING_ACCOUNT", fields: nil).and_return(nil)
 
         response = described_class.call(account_name: "TRADING_ACCOUNT", server_context: {})
 

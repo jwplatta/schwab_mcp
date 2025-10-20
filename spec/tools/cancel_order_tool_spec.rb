@@ -6,16 +6,12 @@ RSpec.describe SchwabMCP::Tools::CancelOrderTool do
     let(:client) { instance_double("SchwabRb::Client") }
     let(:order_id) { "123456789" }
     let(:account_name) { "TRADING_BROKERAGE_ACCOUNT" }
-    let(:account_id) { "12345678" }
-    let(:account_hash) { "abc123hash" }
     let(:order_object) { instance_double("Order", status: "WORKING", order_type: "LIMIT", duration: "DAY", quantity: 1, price: 100.0, order_leg_collection: [], cancelable: true) }
-    let(:account_double) { instance_double("Account", account_number: account_id, hash_value: account_hash) }
-    let(:account_numbers) { instance_double("AccountNumbers", accounts: [account_double]) }
     let(:cancel_response) { double("Response", status: 200) }
 
     before do
       allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(client)
-      allow(client).to receive(:get_account_numbers).and_return(account_numbers)
+      allow(client).to receive(:available_account_names).and_return([account_name])
       allow(client).to receive(:get_order).and_return(order_object)
       allow(client).to receive(:cancel_order).and_return(cancel_response)
     end
@@ -43,19 +39,11 @@ RSpec.describe SchwabMCP::Tools::CancelOrderTool do
       end
     end
 
-    context "when account not found in ENV" do
+    context "when account not found in configured accounts" do
       it "returns error" do
-        allow(ENV).to receive(:[]).with(account_name).and_return(nil)
+        allow(client).to receive(:available_account_names).and_return(["OTHER_ACCOUNT"])
         response = described_class.call(order_id: order_id, account_name: account_name, server_context: server_context)
-        expect(response.content.first[:text]).to match(/not found in environment variables/)
-      end
-    end
-
-    context "when account id not found in account numbers" do
-      it "returns error" do
-        allow(account_numbers).to receive(:accounts).and_return([])
-        response = described_class.call(order_id: order_id, account_name: account_name, server_context: server_context)
-        expect(response.content.first[:text]).to match(/Account ID not found in available accounts/)
+        expect(response.content.first[:text]).to match(/not found in configured accounts/)
       end
     end
 

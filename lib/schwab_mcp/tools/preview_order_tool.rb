@@ -20,7 +20,7 @@ module SchwabMCP
           },
           strategy_type: {
             type: "string",
-            enum: ["ironcondor", "vertical", "single"],
+            enum: %w[SINGLE VERTICAL IRON_CONDOR],
             description: "Type of options strategy to preview"
           },
           price: {
@@ -106,11 +106,8 @@ module SchwabMCP
           account_result = resolve_account_details(client, params[:account_name])
           return account_result if account_result.is_a?(MCP::Tool::Response)
 
-          account_id, account_hash = account_result
-
           order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
-            account_number: account_id,
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
@@ -124,11 +121,11 @@ module SchwabMCP
             short_leg_symbol: params[:short_leg_symbol],
             long_leg_symbol: params[:long_leg_symbol],
             # Single option params
-            symbol: params[:symbol],
+            symbol: params[:symbol]
           )
 
           log_debug("Making preview order API request")
-          response = client.preview_order(account_hash, order_builder, return_data_objects: true)
+          response = client.preview_order(account_name: params[:account_name], order: order_builder, return_data_objects: true)
 
           if response
             log_info("Successfully previewed #{params[:strategy_type]} order")
@@ -159,59 +156,36 @@ module SchwabMCP
       private
 
       def self.resolve_account_details(client, account_name)
-        account_id = ENV[account_name]
-        unless account_id
-          available_accounts = ENV.keys.select { |key| key.end_with?('_ACCOUNT') }
-          log_error("Account name '#{account_name}' not found in environment variables")
-          error_msg = "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+        available_accounts = client.available_account_names
+        unless available_accounts.include?(account_name)
+          log_error("Account name '#{account_name}' not found in configured accounts")
+          error_msg = "**Error**: Account name '#{account_name}' not found in configured accounts.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Add the account to your schwab_rb configuration file."
           return MCP::Tool::Response.new([{
             type: "text",
             text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
-        log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
-        log_debug("Fetching account numbers mapping")
-
-        account_numbers = client.get_account_numbers(return_data_objects: true)
-        unless account_numbers && !account_numbers.empty?
-          log_error("Failed to retrieve account numbers or no accounts returned")
-          error_msg = "**Error**: Failed to retrieve account numbers from Schwab API or no accounts returned"
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: Redactor.redact_formatted_text(error_msg)
-          }])
-        end
-
-        mapping = account_numbers.accounts.find { |acct| acct.account_number == account_id }
-        unless mapping
-          log_error("Account ID not found in available accounts")
-          error_msg = "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: Redactor.redact_formatted_text(error_msg)
-          }])
-        end
-
-        log_debug("Found account hash for account name: #{account_name}")
-        [account_id, mapping.hash_value]
+        log_debug("Using account name: #{account_name}")
+        account_name
       end
 
       def self.validate_strategy_params(params)
-        case params[:strategy_type]
-        when 'ironcondor'
+        strategy = params[:strategy_type].to_s.upcase
+        case strategy
+        when 'IRON_CONDOR'
           required_fields = [:put_short_symbol, :put_long_symbol, :call_short_symbol, :call_long_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(', ')}"
           end
-        when 'vertical'
+        when 'VERTICAL'
           required_fields = [:short_leg_symbol, :long_leg_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(', ')}"
           end
-        when 'single'
+        when 'SINGLE'
           required_fields = [:symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
@@ -222,58 +196,22 @@ module SchwabMCP
         end
       end
 
-      def self.format_preview_response(response_body, params)
-        parsed = JSON.parse(response_body)
-        redacted_data = Redactor.redact(parsed)
-
-        begin
-          strategy_summary = case params[:strategy_type]
-          when 'ironcondor'
-            "**Iron Condor Preview**\n" \
-            "- Put Short: #{params[:put_short_symbol]}\n" \
-            "- Put Long: #{params[:put_long_symbol]}\n" \
-            "- Call Short: #{params[:call_short_symbol]}\n" \
-            "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'vertical'
-            "**Vertical Preview**\n" \
-            "- Short Leg: #{params[:short_leg_symbol]}\n" \
-            "- Long Leg: #{params[:long_leg_symbol]}\n"
-          when 'single'
-            "**Single Option Preview**\n" \
-            "- Symbol: #{params[:symbol]}\n"
-          end
-
-          friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
-
-          order_details = "**Order Details:**\n" \
-                         "- Strategy: #{params[:strategy_type]}\n" \
-                         "- Action: #{params[:order_instruction] || 'open'}\n" \
-                         "- Quantity: #{params[:quantity] || 1}\n" \
-                         "- Price: $#{params[:price]}\n" \
-                         "- Account: #{friendly_name} (#{params[:account_name]})\n\n"
-
-          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
-
-          "#{strategy_summary}\n#{order_details}#{full_response}"
-        rescue JSON::ParserError
-          "**Order Preview Response:**\n\n```\n#{JSON.pretty_generate(redacted_data)}\n```"
-        end
-      end
       def self.format_preview_response(order_preview, params)
         # order_preview is a SchwabRb::DataObjects::OrderPreview
         begin
-          strategy_summary = case params[:strategy_type]
-          when 'ironcondor'
+          strategy = params[:strategy_type].to_s.upcase
+          strategy_summary = case strategy
+          when 'IRON_CONDOR'
             "**Iron Condor Preview**\n" \
             "- Put Short: #{params[:put_short_symbol]}\n" \
             "- Put Long: #{params[:put_long_symbol]}\n" \
             "- Call Short: #{params[:call_short_symbol]}\n" \
             "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'vertical'
-            "**Vertical Preview**\n" \
+          when 'VERTICAL'
+            "**Vertical Spread Preview**\n" \
             "- Short Leg: #{params[:short_leg_symbol]}\n" \
             "- Long Leg: #{params[:long_leg_symbol]}\n"
-          when 'single'
+          when 'SINGLE'
             "**Single Option Preview**\n" \
             "- Symbol: #{params[:symbol]}\n"
           end

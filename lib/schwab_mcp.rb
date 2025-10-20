@@ -11,7 +11,6 @@ require_relative "schwab_mcp/tools/quotes_tool"
 require_relative "schwab_mcp/tools/option_chain_tool"
 require_relative "schwab_mcp/tools/help_tool"
 require_relative "schwab_mcp/tools/schwab_account_details_tool"
-require_relative "schwab_mcp/tools/list_schwab_accounts_tool"
 require_relative "schwab_mcp/tools/list_account_orders_tool"
 require_relative "schwab_mcp/tools/list_account_transactions_tool"
 require_relative "schwab_mcp/tools/get_order_tool"
@@ -22,6 +21,7 @@ require_relative "schwab_mcp/tools/replace_order_tool"
 require_relative "schwab_mcp/tools/list_movers_tool"
 require_relative "schwab_mcp/tools/get_market_hours_tool"
 require_relative "schwab_mcp/tools/get_price_history_tool"
+require_relative "schwab_mcp/tools/get_account_names_tool"
 require_relative "schwab_mcp/loggable"
 require_relative "schwab_mcp/schwab_client_factory"
 
@@ -35,7 +35,6 @@ module SchwabMCP
     Tools::OptionChainTool,
     Tools::HelpTool,
     Tools::SchwabAccountDetailsTool,
-    Tools::ListSchwabAccountsTool,
     Tools::ListAccountOrdersTool,
     Tools::ListAccountTransactionsTool,
     Tools::GetOrderTool,
@@ -45,19 +44,21 @@ module SchwabMCP
     Tools::ReplaceOrderTool,
     Tools::ListMoversTool,
     Tools::GetMarketHoursTool,
-    Tools::GetPriceHistoryTool
+    Tools::GetPriceHistoryTool,
+    Tools::GetAccountNamesTool
   ].freeze
 
   class Server
     include Loggable
 
     def initialize
-      configure_schwab_rb_logging
+      configure_schwab_rb
 
       @server = MCP::Server.new(
         name: "schwab_mcp_server",
         version: SchwabMCP::VERSION,
         tools: TOOLS,
+        server_context: { user: "foobar" }
       )
     end
 
@@ -72,8 +73,9 @@ module SchwabMCP
 
     private
 
-    def configure_schwab_rb_logging
+    def configure_schwab_rb
       SchwabRb.configure do |config|
+        config.schwab_home = ENV['SCHWAB_HOME']
         config.logger = SchwabMCP::Logger.instance
         config.log_level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
       end

@@ -15,26 +15,17 @@ RSpec.describe SchwabMCP::Tools::PreviewOrderTool do
       to_h: { status: 'ACCEPTED', price: 1.23, quantity: 2, commission: 0.65, fees: 0.05 }
     )
   end
-  let(:account_number_item) { double('AccountNumber', account_number: '12345678', hash_value: 'abc123') }
-  let(:account_numbers) do
-    double('AccountNumbers', 
-           accounts: [account_number_item],
-           size: 1,
-           empty?: false)
-  end
 
   before do
     allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(client)
-    allow(client).to receive(:get_account_numbers).with(any_args).and_return(account_numbers)
+    allow(client).to receive(:available_account_names).and_return(['TRADING_BROKERAGE_ACCOUNT'])
     allow(client).to receive(:preview_order).and_return(order_preview)
-    allow(ENV).to receive(:[]).and_call_original
-    allow(ENV).to receive(:[]).with('TRADING_BROKERAGE_ACCOUNT').and_return('12345678')
   end
 
   it 'returns a formatted preview response for a callspread' do
     params = {
       account_name: 'TRADING_BROKERAGE_ACCOUNT',
-      strategy_type: 'vertical',
+      strategy_type: SchwabRb::Order::ComplexOrderStrategyTypes::VERTICAL,
       price: 1.23,
       quantity: 2,
       short_leg_symbol: 'CALLSHORT',

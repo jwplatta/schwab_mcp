@@ -19,7 +19,7 @@ module SchwabMCP
           },
           strategy_type: {
             type: "string",
-            enum: %w[single ironcondor vertical],
+            enum: %w[SINGLE VERTICAL IRON_CONDOR],
             description: "Type of options strategy to place"
           },
           price: {
@@ -101,11 +101,8 @@ module SchwabMCP
           account_result = resolve_account_details(client, params[:account_name])
           return account_result if account_result.is_a?(MCP::Tool::Response)
 
-          account_id, account_hash = account_result
-
           order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
-            account_number: account_id,
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
@@ -123,7 +120,7 @@ module SchwabMCP
           )
 
           log_debug("Making place order API request")
-          response = client.place_order(account_hash, order_builder)
+          response = client.place_order(account_name: params[:account_name], order: order_builder)
 
           if response && (200..299).include?(response.status)
             log_info("Successfully placed #{params[:strategy_type]} order (HTTP #{response.status})")
@@ -157,55 +154,36 @@ module SchwabMCP
       end
 
       def self.resolve_account_details(client, account_name)
-        account_id = ENV[account_name]
-        unless account_id
-          available_accounts = ENV.keys.select { |key| key.end_with?("_ACCOUNT") }
-          log_error("Account name '#{account_name}' not found in environment variables")
+        available_accounts = client.available_account_names
+        unless available_accounts.include?(account_name)
+          log_error("Account name '#{account_name}' not found in configured accounts")
           return MCP::Tool::Response.new([{
                                            type: "text",
-                                           text: "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(", ")}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+                                           text: "**Error**: Account name '#{account_name}' not found in configured accounts.\n\nAvailable accounts: #{available_accounts.join(", ")}\n\nTo configure: Add the account to your schwab_rb configuration file."
                                          }])
         end
 
-        log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
-        log_debug("Fetching account numbers mapping")
-
-        account_numbers = client.get_account_numbers
-
-        unless account_numbers
-          log_error("Failed to retrieve account numbers")
-          return MCP::Tool::Response.new([{
-                                           type: "text",
-                                           text: "**Error**: Failed to retrieve account numbers from Schwab API"
-                                         }])
-        end
-
-        log_debug("Account mappings retrieved (#{account_numbers.size} accounts found)")
-
-        account_hash = account_numbers.find_hash_value(account_id)
-
-        unless account_hash
-          log_error("Account ID not found in available accounts")
-          return MCP::Tool::Response.new([{
-                                           type: "text",
-                                           text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
-                                         }])
-        end
-
-        log_debug("Found account hash for account name: #{account_name}")
-        [account_id, account_hash]
+        log_debug("Using account name: #{account_name}")
+        account_name
       end
 
       def self.validate_strategy_params(params)
-        case params[:strategy_type]
-        when "ironcondor"
+        strategy = params[:strategy_type].to_s.upcase
+        case strategy
+        when 'IRON_CONDOR'
           required_fields = %i[put_short_symbol put_long_symbol call_short_symbol call_long_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(", ")}"
           end
-        when "callspread", "putspread"
+        when 'VERTICAL'
           required_fields = %i[short_leg_symbol long_leg_symbol]
+          missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
+          unless missing_fields.empty?
+            raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(", ")}"
+          end
+        when 'SINGLE'
+          required_fields = %i[symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(", ")}"
@@ -216,18 +194,22 @@ module SchwabMCP
       end
 
       def self.format_place_order_response(response, params)
-        strategy_summary = case params[:strategy_type]
-                           when "ironcondor"
-                             "**Iron Condor Order Placed**\n" \
-                             "- Put Short: #{params[:put_short_symbol]}\n" \
-                             "- Put Long: #{params[:put_long_symbol]}\n" \
-                             "- Call Short: #{params[:call_short_symbol]}\n" \
-                             "- Call Long: #{params[:call_long_symbol]}\n"
-                           when "callspread", "putspread"
-                             "**#{params[:strategy_type].capitalize} Order Placed**\n" \
-                             "- Short Leg: #{params[:short_leg_symbol]}\n" \
-                             "- Long Leg: #{params[:long_leg_symbol]}\n"
-                           end
+        strategy = params[:strategy_type].to_s.upcase
+        strategy_summary = case strategy
+        when 'IRON_CONDOR'
+          "**Iron Condor Order Placed**\n" \
+          "- Put Short: #{params[:put_short_symbol]}\n" \
+          "- Put Long: #{params[:put_long_symbol]}\n" \
+          "- Call Short: #{params[:call_short_symbol]}\n" \
+          "- Call Long: #{params[:call_long_symbol]}\n"
+        when 'VERTICAL'
+          "**Vertical Spread Order Placed**\n" \
+          "- Short Leg: #{params[:short_leg_symbol]}\n" \
+          "- Long Leg: #{params[:long_leg_symbol]}\n"
+        when 'SINGLE'
+          "**Single Option Order Placed**\n" \
+          "- Symbol: #{params[:symbol]}\n"
+        end
 
         friendly_name = params[:account_name].gsub("_ACCOUNT", "").split("_").map(&:capitalize).join(" ")
 

@@ -6,10 +6,10 @@ puts "=== Environment Variables ==="
 puts "SCHWAB_API_KEY: #{ENV['SCHWAB_API_KEY'] ? '[SET]' : '[NOT SET]'}"
 puts "SCHWAB_APP_SECRET: #{ENV['SCHWAB_APP_SECRET'] ? '[SET]' : '[NOT SET]'}"
 puts "APP_CALLBACK_URL: #{ENV['APP_CALLBACK_URL'] ? '[SET]' : '[NOT SET]'}"
-puts "TOKEN_PATH: #{ENV['TOKEN_PATH'] ? '[SET]' : '[NOT SET]'}"
+puts "SCHWAB_TOKEN_PATH: #{ENV['SCHWAB_TOKEN_PATH'] ? '[SET]' : '[NOT SET]'}"
 
 puts "\n=== Testing Token File ==="
-token_path = ENV['TOKEN_PATH'] || './token.json'
+token_path = ENV['SCHWAB_TOKEN_PATH'] || './token.json'
 puts "Checking token file at: #{token_path}"
 puts "Token file exists: #{File.exist?(token_path)}"
 
