@@ -33,7 +33,18 @@ module SchwabMCP
           formatted_names = account_names.map { |name| "- #{name}" }.join("\n")
           "Configured Schwab Account Names:\n\n#{formatted_names}"
         else
-          "No Schwab Account Names Configured:\n\nPlease ensure that your Schwab account names are set up correctly."
+          <<~NO_ACCOUNTS
+            No Schwab Account Names Configured
+
+            You need to configure your Schwab account names in the account_names.json file.
+
+            This file should be located in your schwab_home directory (typically ~/.schwab_rb/).
+
+            For detailed setup instructions, please refer to:
+            https://github.com/jwplatta/schwab_rb/blob/main/doc/ACCOUNT_MANAGEMENT.md
+
+            The account_names.json file should map friendly names to your Schwab account hashes.
+          NO_ACCOUNTS
         end
 
         MCP::Tool::Response.new([{
