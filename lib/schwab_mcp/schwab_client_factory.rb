@@ -13,7 +13,7 @@ module SchwabMCP
           ENV['SCHWAB_API_KEY'],
           ENV['SCHWAB_APP_SECRET'],
           ENV['SCHWAB_CALLBACK_URI'],
-          ENV['TOKEN_PATH']
+          ENV['SCHWAB_TOKEN_PATH']
         )
 
         unless client
