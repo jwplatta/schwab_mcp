@@ -63,9 +63,9 @@ module SchwabMCP
 
     def start
       configure_mcp
-      log_info("🚀 Starting Schwab MCP Server #{SchwabMCP::VERSION}")
-      log_info("📊 Available tools: #{TOOLS.map { |tool| tool.name.split('::').last }.join(', ')}")
-      log_info("📝 Logs will be written to: #{log_file_path}")
+      log_info("Starting Schwab MCP Server #{SchwabMCP::VERSION}")
+      log_info("Available tools: #{TOOLS.map { |tool| tool.name.split('::').last }.join(', ')}")
+      log_info("Logs will be written to: #{log_file_path}")
       transport = MCP::Transports::StdioTransport.new(@server)
       transport.open
     end
