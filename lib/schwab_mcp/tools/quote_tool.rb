@@ -16,8 +16,8 @@ module SchwabMCP
         properties: {
           symbol: {
             type: "string",
-            description: "Instrument symbol (e.g., 'AAPL', 'TSLA')",
-            pattern: "^[A-Za-z]{1,5}$"
+            description: "Instrument symbol (e.g., 'AAPL', 'TSLA', '$SPX')",
+            pattern: '^[\$\^]?[A-Za-z0-9]{1,5}$'
           }
         },
         required: ["symbol"]
@@ -38,7 +38,7 @@ module SchwabMCP
           return SchwabClientFactory.client_error_response unless client
 
           log_debug("Making API request for symbol: #{symbol}")
-          quote_obj = client.get_quote(symbol.upcase, return_data_objects: true)
+          quote_obj = client.get_quote(symbol.upcase)
 
           unless quote_obj
             log_warn("No quote data object returned for symbol: #{symbol}")
@@ -48,7 +48,6 @@ module SchwabMCP
             }])
           end
 
-          # Format output based on quote type
           formatted = format_quote_object(quote_obj)
           log_info("Successfully retrieved quote for #{symbol}")
           MCP::Tool::Response.new([{
@@ -66,7 +65,6 @@ module SchwabMCP
         end
       end
 
-      # Format the quote object for display
       def self.format_quote_object(obj)
         case obj
         when SchwabRb::DataObjects::OptionQuote
