@@ -5,19 +5,13 @@ require "spec_helper"
 RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
   describe ".call" do
     let(:mock_client) { instance_double("SchwabRb::Client") }
-    let(:account_numbers) { instance_double("SchwabRb::DataObjects::AccountNumbers") }
-    let(:account1) { instance_double("SchwabRb::DataObjects::AccountNumbers::AccountNumber") }
     let(:mock_order) { instance_double("SchwabRb::DataObjects::Order") }
     let(:mock_leg) { instance_double("SchwabRb::DataObjects::OrderLeg") }
     let(:mock_instrument) { instance_double("SchwabRb::DataObjects::Instrument") }
 
     before do
       allow(SchwabRb::Auth).to receive(:init_client_easy).and_return(mock_client)
-      allow(account1).to receive(:account_number).and_return("12345678")
-      allow(account1).to receive(:hash_value).and_return("hash1")
-
-      allow(account_numbers).to receive(:size).and_return(1)
-      allow(account_numbers).to receive(:find_hash_value).with("12345678").and_return("hash1")
+      allow(mock_client).to receive(:available_account_names).and_return(["TRADING_BROKERAGE_ACCOUNT"])
 
       # Set up mock order data
       allow(mock_order).to receive(:order_id).and_return("12345")
@@ -60,32 +54,19 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
       end
     end
 
-    context "when account numbers retrieval fails" do
+    context "when account name not found in configured accounts" do
       it "returns error response" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(nil)
+        allow(mock_client).to receive(:available_account_names).and_return(["OTHER_ACCOUNT"])
 
         response = described_class.call(account_name: "TRADING_BROKERAGE_ACCOUNT", server_context: {})
 
         expect(response).to be_a(MCP::Tool::Response)
-        expect(response.content.first[:text]).to include("Failed to retrieve account numbers")
-      end
-    end
-
-    context "when account hash not found" do
-      it "returns error response" do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
-        allow(account_numbers).to receive(:find_hash_value).with("12345678").and_return(nil)
-
-        response = described_class.call(account_name: "TRADING_BROKERAGE_ACCOUNT", server_context: {})
-
-        expect(response).to be_a(MCP::Tool::Response)
-        expect(response.content.first[:text]).to include("Account ID not found in available accounts")
+        expect(response.content.first[:text]).to include("not found in configured accounts")
       end
     end
 
     context "when orders retrieval succeeds" do
       before do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
         allow(mock_client).to receive(:get_account_orders).and_return([mock_order])
       end
 
@@ -104,8 +85,8 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
       it "calls get_account_orders with correct parameters" do
         expect(mock_client).to receive(:get_account_orders).with(
-          "hash1",
           hash_including(
+            account_name: "TRADING_BROKERAGE_ACCOUNT",
             max_results: nil,
             from_entered_datetime: nil,
             to_entered_datetime: nil,
@@ -119,14 +100,13 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
     context "with date filters" do
       before do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
         allow(mock_client).to receive(:get_account_orders).and_return([mock_order])
       end
 
       it "formats dates correctly and includes them in the call" do
         expect(mock_client).to receive(:get_account_orders).with(
-          "hash1",
           hash_including(
+            account_name: "TRADING_BROKERAGE_ACCOUNT",
             from_entered_datetime: DateTime.parse("2023-01-01T00:00:00Z"),
             to_entered_datetime: DateTime.parse("2023-01-31T23:59:59Z")
           )
@@ -146,7 +126,6 @@ RSpec.describe SchwabMCP::Tools::ListAccountOrdersTool do
 
     context "when no orders are found" do
       before do
-        allow(mock_client).to receive(:get_account_numbers).and_return(account_numbers)
         allow(mock_client).to receive(:get_account_orders).and_return([])
       end
 
