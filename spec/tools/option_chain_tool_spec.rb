@@ -46,7 +46,7 @@ RSpec.describe SchwabMCP::Tools::OptionChainTool do
     end
 
     it 'returns formatted option chain data' do
-      expect(client).to receive(:get_option_chain).with('AAPL', return_data_objects: true).and_return(option_chain)
+      expect(client).to receive(:get_option_chain).with('AAPL').and_return(option_chain)
       resp = described_class.call(symbol: 'AAPL', server_context: server_context)
       expect(resp.content.first[:text]).to include('**Option Chain for AAPL**')
       expect(resp.content.first[:text]).to include('Status: SUCCESS')
@@ -58,7 +58,6 @@ RSpec.describe SchwabMCP::Tools::OptionChainTool do
     it 'handles additional parameters' do
       expect(client).to receive(:get_option_chain).with(
         'AAPL',
-        return_data_objects: true,
         contract_type: 'CALL',
         strike_count: 5
       ).and_return(option_chain)

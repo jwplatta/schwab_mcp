@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    schwab_mcp (0.2.0)
+    schwab_mcp (0.3.0)
       mcp
       schwab_rb
 
