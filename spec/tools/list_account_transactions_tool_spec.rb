@@ -49,14 +49,12 @@ RSpec.describe SchwabMCP::Tools::ListAccountTransactionsTool do
 
   describe ".call" do
     let(:client) { double("client") }
-    let(:account_numbers_mock) { double("AccountNumbers", size: 1, find_hash_value: "abc") }
     let(:transaction_object) { SchwabRb::DataObjects::Transaction.build(transaction_hash) }
     let(:transactions_array) { [transaction_object] }
 
     before do
-      stub_const("ENV", ENV.to_hash.merge(account_name => "123"))
       allow(SchwabMCP::SchwabClientFactory).to receive(:create_client).and_return(client)
-      allow(client).to receive(:get_account_numbers).and_return(account_numbers_mock)
+      allow(client).to receive(:available_account_names).and_return([account_name])
       allow(client).to receive(:get_transactions).and_return(transactions_array)
     end
 
@@ -67,10 +65,10 @@ RSpec.describe SchwabMCP::Tools::ListAccountTransactionsTool do
       expect(response.instance_variable_get(:@content).first[:text]).to include("Apple Inc.")
     end
 
-    it "returns error if account name is missing in ENV" do
-      stub_const("ENV", ENV.to_hash.reject { |k, _| k == account_name })
+    it "returns error if account name not found in configured accounts" do
+      allow(client).to receive(:available_account_names).and_return(["OTHER_ACCOUNT"])
       response = described_class.call(account_name: account_name, server_context: server_context)
-      expect(response.instance_variable_get(:@content).first[:text]).to include("not found in environment variables")
+      expect(response.instance_variable_get(:@content).first[:text]).to include("not found in configured accounts")
     end
   end
 end
