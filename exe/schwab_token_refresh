@@ -13,7 +13,7 @@ required_vars = [
   'SCHWAB_API_KEY',
   'SCHWAB_APP_SECRET',
   'SCHWAB_CALLBACK_URI',
-  'TOKEN_PATH'
+  'SCHWAB_TOKEN_PATH'
 ]
 missing_vars = required_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
 
