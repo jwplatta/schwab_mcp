@@ -22,7 +22,7 @@ unless missing_vars.empty?
   exit 1
 end
 
-token_path = ENV['TOKEN_PATH']
+token_path = ENV['SCHWAB_TOKEN_PATH']
 puts "Token path: #{token_path}"
 
 begin
