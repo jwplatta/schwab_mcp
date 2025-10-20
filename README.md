@@ -40,7 +40,7 @@ Create a `.env` file in your project root with the following required variables:
 SCHWAB_API_KEY=your_schwab_api_key
 SCHWAB_APP_SECRET=your_schwab_app_secret
 SCHWAB_CALLBACK_URI=your_callback_uri
-TOKEN_PATH=path/to/your/token.json
+SCHWAB_TOKEN_PATH=path/to/your/token.json
 ```
 
 ### Running the MCP Server
@@ -49,12 +49,6 @@ Start the server using the provided executable:
 
 ```bash
 bundle exec exe/schwab_mcp
-```
-
-Or use the convenience script:
-
-```bash
-./start_mcp_server.sh
 ```
 
 ### Token Management
