@@ -44,7 +44,7 @@ module SchwabMCP
 
       def self.get_general_help
         <<~HELP
-          # 📊 Schwab MCP Server
+          # Schwab MCP Server
 
           ## Available Tools:
 
