@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+
+puts "Building and releasing gem..."
+
+puts "Running tests..."
+system("bundle exec rake spec") or abort("Tests failed!")
+
+puts "Running RuboCop..."
+if !system("bundle exec rubocop")
+  puts "⚠️  RuboCop has some issues, but continuing with release..."
+end
+
+puts "Building gem..."
+system("gem build schwab_mcp.gemspec") or abort("Gem build failed!")
+
+built_gem = Dir.glob("schwab_mcp-*.gem").max_by { |f| File.mtime(f) }
+if built_gem && !built_gem.start_with?("pkg/")
+  Dir.mkdir("pkg") unless Dir.exist?("pkg")
+  File.rename(built_gem, File.join("pkg", built_gem))
+end
+
+puts "Pushing gem to RubyGems..."
+gem_file = Dir.glob("pkg/schwab_mcp-*.gem").max_by { |f| File.mtime(f) }
+
+if gem_file
+  system("gem push #{gem_file}") or abort("Gem push failed!")
+else
+  abort("Could not find gem file to push!")
+end
+
+puts "Successfully released gem!"
