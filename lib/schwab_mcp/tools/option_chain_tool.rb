@@ -16,8 +16,8 @@ module SchwabMCP
         properties: {
           symbol: {
             type: "string",
-            description: "Instrument symbol (e.g., 'AAPL', 'TSLA')",
-            pattern: "^[A-Za-z]{1,5}$"
+            description: "Instrument symbol (e.g., 'AAPL', 'TSLA', '$SPX')",
+            pattern: '^[\$\^]?[A-Za-z0-9]{1,5}$'
           },
           contract_type: {
             type: "string",
@@ -169,7 +169,7 @@ module SchwabMCP
           params[:entitlement] = entitlement if entitlement
 
           log_debug("Making API request for option chain with params: #{params}")
-          option_chain = client.get_option_chain(symbol.upcase, return_data_objects: true, **params)
+          option_chain = client.get_option_chain(symbol.upcase, **params)
 
           if option_chain
             log_info("Successfully retrieved option chain for #{symbol}")
