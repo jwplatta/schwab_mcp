@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    schwab_mcp (0.1.0)
+    schwab_mcp (0.2.0)
       mcp
       schwab_rb
 
@@ -155,7 +155,7 @@ GEM
       prism (~> 1.4)
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
-    schwab_rb (0.3.8)
+    schwab_rb (0.4.0)
       async (~> 2.18)
       async-http (~> 0.82)
       dotenv
@@ -196,7 +196,7 @@ DEPENDENCIES
   rspec (~> 3.0)
   rubocop (~> 1.21)
   schwab_mcp!
-  schwab_rb (~> 0.3.8)
+  schwab_rb (~> 0.4.0)
 
 BUNDLED WITH
    2.6.6
