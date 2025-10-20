@@ -30,7 +30,7 @@ RSpec.describe SchwabMCP::Tools::QuoteTool do
     end
 
     it 'returns formatted equity quote' do
-      expect(client).to receive(:get_quote).with('AAPL', return_data_objects: true).and_return(equity_quote)
+      expect(client).to receive(:get_quote).with('AAPL').and_return(equity_quote)
       resp = described_class.call(symbol: 'AAPL', server_context: server_context)
       expect(resp.content.first[:text]).to include('Equity: AAPL')
       expect(resp.content.first[:text]).to include('Last: 200.0')
@@ -61,7 +61,7 @@ RSpec.describe SchwabMCP::Tools::QuoteTool do
     end
 
     it 'returns formatted option quote' do
-      expect(client).to receive(:get_quote).with('AAPL_072525C200', return_data_objects: true).and_return(option_quote)
+      expect(client).to receive(:get_quote).with('AAPL_072525C200').and_return(option_quote)
       resp = described_class.call(symbol: 'AAPL_072525C200', server_context: server_context)
       expect(resp.content.first[:text]).to include('Option: AAPL_072525C200')
       expect(resp.content.first[:text]).to include('Last: 5.0')
