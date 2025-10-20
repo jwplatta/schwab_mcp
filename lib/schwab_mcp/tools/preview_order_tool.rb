@@ -106,11 +106,9 @@ module SchwabMCP
           account_result = resolve_account_details(client, params[:account_name])
           return account_result if account_result.is_a?(MCP::Tool::Response)
 
-          account_id, account_hash = account_result
-
           order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
-            account_number: account_id,
+            account_name: params[:account_name],
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
@@ -128,7 +126,7 @@ module SchwabMCP
           )
 
           log_debug("Making preview order API request")
-          response = client.preview_order(account_hash, order_builder, return_data_objects: true)
+          response = client.preview_order(account_name: params[:account_name], order: order_builder, return_data_objects: true)
 
           if response
             log_info("Successfully previewed #{params[:strategy_type]} order")
@@ -159,42 +157,18 @@ module SchwabMCP
       private
 
       def self.resolve_account_details(client, account_name)
-        account_id = ENV[account_name]
-        unless account_id
-          available_accounts = ENV.keys.select { |key| key.end_with?('_ACCOUNT') }
-          log_error("Account name '#{account_name}' not found in environment variables")
-          error_msg = "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+        available_accounts = client.available_account_names
+        unless available_accounts.include?(account_name)
+          log_error("Account name '#{account_name}' not found in configured accounts")
+          error_msg = "**Error**: Account name '#{account_name}' not found in configured accounts.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Add the account to your schwab_rb configuration file."
           return MCP::Tool::Response.new([{
             type: "text",
             text: Redactor.redact_formatted_text(error_msg)
           }])
         end
 
-        log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
-        log_debug("Fetching account numbers mapping")
-
-        account_numbers = client.get_account_numbers(return_data_objects: true)
-        unless account_numbers && !account_numbers.empty?
-          log_error("Failed to retrieve account numbers or no accounts returned")
-          error_msg = "**Error**: Failed to retrieve account numbers from Schwab API or no accounts returned"
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: Redactor.redact_formatted_text(error_msg)
-          }])
-        end
-
-        mapping = account_numbers.accounts.find { |acct| acct.account_number == account_id }
-        unless mapping
-          log_error("Account ID not found in available accounts")
-          error_msg = "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: Redactor.redact_formatted_text(error_msg)
-          }])
-        end
-
-        log_debug("Found account hash for account name: #{account_name}")
-        [account_id, mapping.hash_value]
+        log_debug("Using account name: #{account_name}")
+        account_name
       end
 
       def self.validate_strategy_params(params)

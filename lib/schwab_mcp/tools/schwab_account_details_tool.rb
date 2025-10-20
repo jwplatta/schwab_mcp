@@ -51,50 +51,24 @@ module SchwabMCP
           client = SchwabClientFactory.create_client
           return SchwabClientFactory.client_error_response unless client
 
-          account_id = ENV[account_name]
-          unless account_id
-            available_accounts = ENV.keys.select { |key| key.end_with?('_ACCOUNT') }
-            log_error("Account name '#{account_name}' not found in environment variables")
+          available_accounts = client.available_account_names
+          unless available_accounts.include?(account_name)
+            log_error("Account name '#{account_name}' not found in configured accounts")
             return MCP::Tool::Response.new([{
               type: "text",
-              text: "**Error**: Account name '#{account_name}' not found in environment variables.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Set ENV['#{account_name}'] to your account ID."
+              text: "**Error**: Account name '#{account_name}' not found in configured accounts.\n\nAvailable accounts: #{available_accounts.join(', ')}\n\nTo configure: Add the account to your schwab_rb configuration file."
             }])
           end
 
-          log_debug("Found account ID: [REDACTED] for account name: #{account_name}")
-          log_debug("Fetching account numbers mapping")
-
-          account_numbers = client.get_account_numbers
-
-          unless account_numbers
-            log_error("Failed to retrieve account numbers")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Failed to retrieve account numbers from Schwab API"
-            }])
-          end
-
-          log_debug("Account numbers retrieved (#{account_numbers.size} accounts found)")
-
-          account_hash = account_numbers.find_hash_value(account_id)
-
-          unless account_hash
-            log_error("Account ID not found in available accounts")
-            return MCP::Tool::Response.new([{
-              type: "text",
-              text: "**Error**: Account ID not found in available accounts. #{account_numbers.size} accounts available."
-            }])
-          end
-
-          log_debug("Found account hash for account ID: #{account_name}")
+          log_debug("Using account name: #{account_name}")
           log_debug("Fetching account information with fields: #{fields}")
 
-          account = client.get_account(account_hash, fields: fields)
+          account = client.get_account(account_name: account_name, fields: fields)
 
           if account
             log_info("Successfully retrieved account information for #{account_name}")
 
-            formatted_response = format_account_data(account, account_name, account_id)
+            formatted_response = format_account_data(account, account_name)
 
             MCP::Tool::Response.new([{
               type: "text",
@@ -126,7 +100,7 @@ module SchwabMCP
 
       private
 
-      def self.format_account_data(account, account_name, account_id)
+      def self.format_account_data(account, account_name)
         friendly_name = account_name.gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
 
         formatted = "**Account Information for #{friendly_name} (#{account_name}):**\n\n"
