@@ -20,7 +20,7 @@ module SchwabMCP
           },
           strategy_type: {
             type: "string",
-            enum: ["ironcondor", "vertical", "single"],
+            enum: %w[SINGLE VERTICAL IRON_CONDOR],
             description: "Type of options strategy to preview"
           },
           price: {
@@ -108,7 +108,6 @@ module SchwabMCP
 
           order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
-            account_name: params[:account_name],
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
@@ -122,7 +121,7 @@ module SchwabMCP
             short_leg_symbol: params[:short_leg_symbol],
             long_leg_symbol: params[:long_leg_symbol],
             # Single option params
-            symbol: params[:symbol],
+            symbol: params[:symbol]
           )
 
           log_debug("Making preview order API request")
@@ -172,20 +171,21 @@ module SchwabMCP
       end
 
       def self.validate_strategy_params(params)
-        case params[:strategy_type]
-        when 'ironcondor'
+        strategy = params[:strategy_type].to_s.upcase
+        case strategy
+        when 'IRON_CONDOR'
           required_fields = [:put_short_symbol, :put_long_symbol, :call_short_symbol, :call_long_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(', ')}"
           end
-        when 'vertical'
+        when 'VERTICAL'
           required_fields = [:short_leg_symbol, :long_leg_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(', ')}"
           end
-        when 'single'
+        when 'SINGLE'
           required_fields = [:symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
@@ -196,58 +196,22 @@ module SchwabMCP
         end
       end
 
-      def self.format_preview_response(response_body, params)
-        parsed = JSON.parse(response_body)
-        redacted_data = Redactor.redact(parsed)
-
-        begin
-          strategy_summary = case params[:strategy_type]
-          when 'ironcondor'
-            "**Iron Condor Preview**\n" \
-            "- Put Short: #{params[:put_short_symbol]}\n" \
-            "- Put Long: #{params[:put_long_symbol]}\n" \
-            "- Call Short: #{params[:call_short_symbol]}\n" \
-            "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'vertical'
-            "**Vertical Preview**\n" \
-            "- Short Leg: #{params[:short_leg_symbol]}\n" \
-            "- Long Leg: #{params[:long_leg_symbol]}\n"
-          when 'single'
-            "**Single Option Preview**\n" \
-            "- Symbol: #{params[:symbol]}\n"
-          end
-
-          friendly_name = params[:account_name].gsub('_ACCOUNT', '').split('_').map(&:capitalize).join(' ')
-
-          order_details = "**Order Details:**\n" \
-                         "- Strategy: #{params[:strategy_type]}\n" \
-                         "- Action: #{params[:order_instruction] || 'open'}\n" \
-                         "- Quantity: #{params[:quantity] || 1}\n" \
-                         "- Price: $#{params[:price]}\n" \
-                         "- Account: #{friendly_name} (#{params[:account_name]})\n\n"
-
-          full_response = "**Schwab API Preview Response:**\n\n```json\n#{JSON.pretty_generate(redacted_data)}\n```"
-
-          "#{strategy_summary}\n#{order_details}#{full_response}"
-        rescue JSON::ParserError
-          "**Order Preview Response:**\n\n```\n#{JSON.pretty_generate(redacted_data)}\n```"
-        end
-      end
       def self.format_preview_response(order_preview, params)
         # order_preview is a SchwabRb::DataObjects::OrderPreview
         begin
-          strategy_summary = case params[:strategy_type]
-          when 'ironcondor'
+          strategy = params[:strategy_type].to_s.upcase
+          strategy_summary = case strategy
+          when 'IRON_CONDOR'
             "**Iron Condor Preview**\n" \
             "- Put Short: #{params[:put_short_symbol]}\n" \
             "- Put Long: #{params[:put_long_symbol]}\n" \
             "- Call Short: #{params[:call_short_symbol]}\n" \
             "- Call Long: #{params[:call_long_symbol]}\n"
-          when 'vertical'
-            "**Vertical Preview**\n" \
+          when 'VERTICAL'
+            "**Vertical Spread Preview**\n" \
             "- Short Leg: #{params[:short_leg_symbol]}\n" \
             "- Long Leg: #{params[:long_leg_symbol]}\n"
-          when 'single'
+          when 'SINGLE'
             "**Single Option Preview**\n" \
             "- Symbol: #{params[:symbol]}\n"
           end

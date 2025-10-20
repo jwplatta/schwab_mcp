@@ -19,7 +19,7 @@ module SchwabMCP
           },
           strategy_type: {
             type: "string",
-            enum: %w[single ironcondor vertical],
+            enum: %w[SINGLE VERTICAL IRON_CONDOR],
             description: "Type of options strategy to place"
           },
           price: {
@@ -103,7 +103,6 @@ module SchwabMCP
 
           order_builder = SchwabRb::Orders::OrderFactory.build(
             strategy_type: params[:strategy_type],
-            account_name: params[:account_name],
             price: params[:price],
             quantity: params[:quantity] || 1,
             order_instruction: (params[:order_instruction] || "open").to_sym,
@@ -169,15 +168,22 @@ module SchwabMCP
       end
 
       def self.validate_strategy_params(params)
-        case params[:strategy_type]
-        when "ironcondor"
+        strategy = params[:strategy_type].to_s.upcase
+        case strategy
+        when 'IRON_CONDOR'
           required_fields = %i[put_short_symbol put_long_symbol call_short_symbol call_long_symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "Iron condor strategy requires: #{missing_fields.join(", ")}"
           end
-        when "callspread", "putspread"
+        when 'VERTICAL'
           required_fields = %i[short_leg_symbol long_leg_symbol]
+          missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
+          unless missing_fields.empty?
+            raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(", ")}"
+          end
+        when 'SINGLE'
+          required_fields = %i[symbol]
           missing_fields = required_fields.select { |field| params[field].nil? || params[field].empty? }
           unless missing_fields.empty?
             raise ArgumentError, "#{params[:strategy_type]} strategy requires: #{missing_fields.join(", ")}"
@@ -188,18 +194,22 @@ module SchwabMCP
       end
 
       def self.format_place_order_response(response, params)
-        strategy_summary = case params[:strategy_type]
-                           when "ironcondor"
-                             "**Iron Condor Order Placed**\n" \
-                             "- Put Short: #{params[:put_short_symbol]}\n" \
-                             "- Put Long: #{params[:put_long_symbol]}\n" \
-                             "- Call Short: #{params[:call_short_symbol]}\n" \
-                             "- Call Long: #{params[:call_long_symbol]}\n"
-                           when "callspread", "putspread"
-                             "**#{params[:strategy_type].capitalize} Order Placed**\n" \
-                             "- Short Leg: #{params[:short_leg_symbol]}\n" \
-                             "- Long Leg: #{params[:long_leg_symbol]}\n"
-                           end
+        strategy = params[:strategy_type].to_s.upcase
+        strategy_summary = case strategy
+        when 'IRON_CONDOR'
+          "**Iron Condor Order Placed**\n" \
+          "- Put Short: #{params[:put_short_symbol]}\n" \
+          "- Put Long: #{params[:put_long_symbol]}\n" \
+          "- Call Short: #{params[:call_short_symbol]}\n" \
+          "- Call Long: #{params[:call_long_symbol]}\n"
+        when 'VERTICAL'
+          "**Vertical Spread Order Placed**\n" \
+          "- Short Leg: #{params[:short_leg_symbol]}\n" \
+          "- Long Leg: #{params[:long_leg_symbol]}\n"
+        when 'SINGLE'
+          "**Single Option Order Placed**\n" \
+          "- Symbol: #{params[:symbol]}\n"
+        end
 
         friendly_name = params[:account_name].gsub("_ACCOUNT", "").split("_").map(&:capitalize).join(" ")
 
